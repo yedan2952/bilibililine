@@ -2,6 +2,7 @@ package com.bilibili.lite.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -35,9 +36,9 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottomNav);
 
         titleBar.setTitle(getString(R.string.app_name));
-        titleBar.addRightAction(new TitleBar.ImageAction(R.drawable.ic_search) {
+        titleBar.addAction(new TitleBar.ImageAction(R.drawable.ic_search) {
             @Override
-            public void performAction() {
+            public void performAction(View view) {
                 startActivity(new Intent(MainActivity.this, SearchActivity.class));
             }
         });
