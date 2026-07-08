@@ -1,0 +1,50 @@
+name: Debug Test (Emulator + Logcat)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  debug-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build arm8 debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleArm8Debug
+
+      - name: Run emulator + install + logcat
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 28
+          target: default
+          arch: x86_64
+          avd-name: bili_test
+          emulator-options: -no-window -no-audio -no-boot-anim
+          disable-animations: true
+          script: |
+            echo "=== Installing APK ==="
+            adb install app/build/outputs/apk/arm8/debug/*.apk
+            echo "=== Clearing logcat ==="
+            adb logcat -c
+            echo "=== Launching app ==="
+            adb shell am start -n com.bilibili.lite/.ui.MainActivity
+            echo "=== Waiting 10s for app to load ==="
+            sleep 10
+            echo "=== Dumping logcat (filtered) ==="
+            adb logcat -d -v time | grep -iE "bilibili|crash|error|exception|fatal|anr" || echo "No relevant logs found"
+            echo "=== Full logcat ==="
+            adb logcat -d -v time | tail -200

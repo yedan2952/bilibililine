@@ -31,6 +31,10 @@
         <activity
             android:name=".ui.login.LoginActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.debug.DebugActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
 
     </application>
 

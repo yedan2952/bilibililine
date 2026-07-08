@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import com.bilibili.lite.R;
+import com.bilibili.lite.ui.debug.DebugActivity;
 import com.bilibili.lite.ui.login.LoginActivity;
 import com.bilibili.lite.util.DarkThemeHelper;
 import com.bilibili.lite.util.ImageLoader;
@@ -71,9 +72,12 @@ public class MineFragment extends Fragment {
             new AlertDialog.Builder(getContext())
                     .setTitle("Settings")
                     .setItems(new String[]{
-                            (dark ? "\u2713 " : "") + "Dark Mode"
-                    }, (d, i) -> DarkThemeHelper.toggle(getActivity()))
-                    .show();
+                            (dark ? "\u2713 " : "") + "Dark Mode",
+                            "Debug Log"
+                    }, (d, i) -> {
+                        if (i == 0) DarkThemeHelper.toggle(getActivity());
+                        else startActivity(new Intent(getActivity(), DebugActivity.class));
+                    }).show();
         });
 
         updateCounts();

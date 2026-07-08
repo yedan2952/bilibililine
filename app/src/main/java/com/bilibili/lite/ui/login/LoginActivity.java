@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import com.bilibili.lite.R;
 import com.bilibili.lite.util.DarkThemeHelper;
+import com.bilibili.lite.util.DebugLogger;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -28,6 +29,7 @@ public class LoginActivity extends AppCompatActivity {
         DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        DebugLogger.i("Login", "onCreate");
 
         qrImage = findViewById(R.id.qrImage);
         statusText = findViewById(R.id.statusText);
@@ -47,7 +49,10 @@ public class LoginActivity extends AppCompatActivity {
             statusText.setText(msg);
         });
         viewModel.getError().observe(this, err -> {
-            if (err != null) Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
+            if (err != null) {
+                DebugLogger.e("Login", "Login error: " + err);
+                Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
+            }
         });
         viewModel.getSuccess().observe(this, ok -> {
             if (ok) {

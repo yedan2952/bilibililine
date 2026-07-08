@@ -19,6 +19,7 @@ import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.ui.home.VideoFeedAdapter;
 import com.bilibili.lite.ui.video.VideoDetailActivity;
 import com.bilibili.lite.util.DarkThemeHelper;
+import com.bilibili.lite.util.DebugLogger;
 
 public class SearchActivity extends AppCompatActivity {
 
@@ -33,6 +34,7 @@ public class SearchActivity extends AppCompatActivity {
         DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
+        DebugLogger.i("Search", "onCreate");
 
         searchInput = findViewById(R.id.searchInput);
         clearBtn = findViewById(R.id.btnClear);
@@ -80,7 +82,10 @@ public class SearchActivity extends AppCompatActivity {
             emptyView.setVisibility(videos.isEmpty() ? View.VISIBLE : View.GONE);
         });
         viewModel.getError().observe(this, err -> {
-            if (err != null) Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
+            if (err != null) {
+                DebugLogger.e("Search", "Search error: " + err);
+                Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 }

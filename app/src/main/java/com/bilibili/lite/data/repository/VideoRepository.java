@@ -4,6 +4,7 @@ import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
 import com.bilibili.lite.data.remote.WbiSigner;
+import com.bilibili.lite.util.DebugLogger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class VideoRepository {
                 else callback.onError("API error");
             }
             @Override public void onFailure(Call<ApiService.BiliResponse<ApiService.PopularResult>> call, Throwable t) {
+                DebugLogger.e("VideoRepo", "fetchPopular failed", t);
                 callback.onError(t.getMessage());
             }
         });
@@ -50,6 +52,7 @@ public class VideoRepository {
                 else callback.onError("Video detail error");
             }
             @Override public void onFailure(Call<ApiService.BiliResponse<VideoInfo>> call, Throwable t) {
+                DebugLogger.e("VideoRepo", "getVideoDetail failed", t);
                 callback.onError(t.getMessage());
             }
         });
@@ -78,6 +81,7 @@ public class VideoRepository {
                 } else callback.onError("No playable URL");
             }
             @Override public void onFailure(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call, Throwable t) {
+                DebugLogger.e("VideoRepo", "getPlayUrl failed bvid=" + bvid + " cid=" + cid + " qn=" + qn, t);
                 callback.onError(t.getMessage());
             }
         });
@@ -98,6 +102,7 @@ public class VideoRepository {
                 else callback.onError("No comments");
             }
             @Override public void onFailure(Call<ApiService.BiliResponse<ApiService.CommentResult>> call, Throwable t) {
+                DebugLogger.e("VideoRepo", "getComments failed aid=" + aid, t);
                 callback.onError(t.getMessage());
             }
         });
@@ -112,6 +117,7 @@ public class VideoRepository {
                 else callback.onError("No related");
             }
             @Override public void onFailure(Call<List<VideoInfo>> call, Throwable t) {
+                DebugLogger.e("VideoRepo", "getRelated failed bvid=" + bvid, t);
                 callback.onError(t.getMessage());
             }
         });

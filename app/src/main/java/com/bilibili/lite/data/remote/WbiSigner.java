@@ -1,6 +1,6 @@
 package com.bilibili.lite.data.remote;
 
-
+import com.bilibili.lite.util.DebugLogger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
@@ -43,7 +43,9 @@ public class WbiSigner {
             }
             mixinKey = sb.toString();
             lastFetch = System.currentTimeMillis();
-        } catch (Exception ignored) {
+            DebugLogger.i("WbiSigner", "Key refreshed, mixinKey=" + mixinKey);
+        } catch (Exception e) {
+            DebugLogger.e("WbiSigner", "Failed to refresh key", e);
         }
     }
 

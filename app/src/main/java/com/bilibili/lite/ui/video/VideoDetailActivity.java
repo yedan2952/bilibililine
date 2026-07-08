@@ -25,6 +25,7 @@ import com.bilibili.lite.data.model.CommentItem;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.repository.VideoRepository;
 import com.bilibili.lite.util.DarkThemeHelper;
+import com.bilibili.lite.util.DebugLogger;
 import com.bilibili.lite.util.ImageLoader;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -67,6 +68,7 @@ public class VideoDetailActivity extends AppCompatActivity {
         DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_detail);
+        DebugLogger.i("VideoDetail", "onCreate bvid=" + getIntent().getStringExtra("bvid"));
 
         bvid = getIntent().getStringExtra("bvid");
         prefs = getSharedPreferences("bili", MODE_PRIVATE);
@@ -148,12 +150,14 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         repo.getPlayUrl(bvid, cid, qn, new VideoRepository.CallbackImpl<VideoRepository.PlayUrlResult>() {
             @Override public void onSuccess(VideoRepository.PlayUrlResult r) {
+                DebugLogger.i("VideoDetail", "Got play URL, qn=" + qn + " url=" + (r.url != null ? r.url.substring(0, Math.min(80, r.url.length())) : "null"));
                 acceptQuality = r.acceptQuality;
                 acceptDesc = r.acceptDesc;
                 initPlayer(r.url);
             }
             @Override public void onError(String e) {
                 showLoading(false);
+                DebugLogger.e("VideoDetail", "Play URL error: " + e);
                 Toast.makeText(VideoDetailActivity.this, e, Toast.LENGTH_SHORT).show();
             }
         });
@@ -179,6 +183,7 @@ public class VideoDetailActivity extends AppCompatActivity {
             });
             mediaPlayer.setOnErrorListener((mp, w, e) -> {
                 showLoading(false);
+                DebugLogger.e("VideoDetail", "MediaPlayer error what=" + w + " extra=" + e);
                 Toast.makeText(this, "Playback error (" + w + ")", Toast.LENGTH_LONG).show();
                 return true;
             });

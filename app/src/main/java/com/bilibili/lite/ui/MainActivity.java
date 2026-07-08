@@ -13,7 +13,9 @@ import com.bilibili.lite.ui.discover.DiscoverFragment;
 import com.bilibili.lite.ui.home.HomeFragment;
 import com.bilibili.lite.ui.mine.MineFragment;
 import com.bilibili.lite.ui.search.SearchActivity;
+import com.bilibili.lite.ui.debug.DebugActivity;
 import com.bilibili.lite.util.DarkThemeHelper;
+import com.bilibili.lite.util.DebugLogger;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
@@ -28,12 +30,17 @@ public class MainActivity extends AppCompatActivity {
         DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        DebugLogger.i("MainActivity", "onCreate");
 
         viewPager = findViewById(R.id.viewPager);
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
         findViewById(R.id.btnSearch).setOnClickListener(v ->
                 startActivity(new Intent(this, SearchActivity.class)));
+        findViewById(R.id.btnSearch).setOnLongClickListener(v -> {
+            startActivity(new Intent(this, DebugActivity.class));
+            return true;
+        });
 
         List<Fragment> fragments = new ArrayList<>();
         fragments.add(new HomeFragment());
