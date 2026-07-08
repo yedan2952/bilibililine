@@ -1,6 +1,7 @@
 package com.bilibili.lite;
 
 import android.app.Application;
+import androidx.multidex.MultiDex;
 import com.bilibili.lite.data.remote.RetrofitClient;
 import com.bilibili.lite.data.remote.WbiSigner;
 import com.bilibili.lite.util.DebugLogger;
@@ -9,6 +10,12 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 public class App extends Application {
+
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(base);
+        MultiDex.install(this);
+    }
 
     @Override
     public void onCreate() {
