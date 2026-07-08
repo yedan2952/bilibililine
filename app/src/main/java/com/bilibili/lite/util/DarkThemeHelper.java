@@ -3,7 +3,6 @@ package com.bilibili.lite.util;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import androidx.appcompat.app.AppCompatDelegate;
-import com.bilibili.lite.BuildConfig;
 
 public class DarkThemeHelper {
 
