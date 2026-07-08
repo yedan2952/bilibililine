@@ -5,23 +5,38 @@
     android:background="@color/bili_bg"
     android:orientation="vertical">
 
+    <!-- Bilibili style pink profile header -->
     <RelativeLayout
         android:id="@+id/loginCard"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="@color/white"
+        android:layout_height="150dp"
+        android:background="@color/bili_pink"
         android:gravity="center"
         android:padding="16dp">
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:drawableTop="@android:drawable/ic_menu_myplaces"
-            android:drawablePadding="8dp"
-            android:text="\u70b9\u51fb\u767b\u5f55"
-            android:textColor="@color/bili_pink"
-            android:textSize="15sp" />
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@color/white"
+                android:padding="14dp"
+                android:src="@android:drawable/ic_menu_myplaces" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="\u70b9\u51fb\u767b\u5f55"
+                android:textColor="@color/white"
+                android:textSize="15sp" />
+
+        </LinearLayout>
 
     </RelativeLayout>
 
@@ -29,7 +44,7 @@
         android:id="@+id/userCard"
         android:layout_width="match_parent"
         android:layout_height="120dp"
-        android:background="@color/white"
+        android:background="@color/bili_pink"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="16dp"
@@ -39,7 +54,8 @@
             android:id="@+id/avatar"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:background="@color/divider" />
+            android:background="@color/white"
+            android:scaleType="centerCrop" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -52,26 +68,29 @@
                 android:id="@+id/tvName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
+                android:textColor="@color/white"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvLevel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="@color/bili_pink"
-                android:textSize="12sp" />
+                android:layout_marginTop="4dp"
+                android:background="@color/bili_gold"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:textColor="@color/white"
+                android:textSize="11sp" />
 
             <TextView
                 android:id="@+id/tvSign"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/text_secondary"
+                android:textColor="#DDFFFFFF"
                 android:textSize="13sp" />
 
         </LinearLayout>

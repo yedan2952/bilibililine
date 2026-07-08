@@ -1,6 +1,8 @@
 package com.bilibili.lite.ui.video;
 
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.Uri;
@@ -13,6 +15,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,7 +46,7 @@ public class VideoDetailActivity extends AppCompatActivity {
     private VideoDetailViewModel viewModel;
     private final VideoRepository repo = VideoRepository.getInstance();
 
-    private TextView tvTitle, tvAuthor, tvStats, tvCurrentTime, tvTotalTime;
+    private TextView tvTitle, tvAuthor, tvStats, tvCurrentTime, tvTotalTime, tvPubdate, tvDescription;
     private ImageView ivCover, btnPlayPause, btnFullscreen, btnSpeed, btnQuality;
     private TextView btnFavorite, btnSubtitle;
     private SurfaceView surfaceView;
@@ -63,6 +66,11 @@ public class VideoDetailActivity extends AppCompatActivity {
     private String[] acceptDesc;
     private String[] backupUrls;
     private int currentUrlIndex = 0;
+    private int originalOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+    private ScrollView contentScrollView;
+    private View btnLoadMoreComments;
+    private int commentPage = 1;
+    private boolean hasMoreComments = true;
 
     private SharedPreferences prefs;
     private Set<String> favorites;
@@ -81,6 +89,8 @@ public class VideoDetailActivity extends AppCompatActivity {
         tvTitle = findViewById(R.id.tvTitle);
         tvAuthor = findViewById(R.id.tvAuthor);
         tvStats = findViewById(R.id.tvStats);
+        tvPubdate = findViewById(R.id.tvPubdate);
+        tvDescription = findViewById(R.id.tvDescription);
         tvCurrentTime = findViewById(R.id.tvCurrentTime);
         tvTotalTime = findViewById(R.id.tvTotalTime);
         ivCover = findViewById(R.id.ivCover);
@@ -97,6 +107,8 @@ public class VideoDetailActivity extends AppCompatActivity {
         loadingSpinner = findViewById(R.id.loadingSpinner);
         relatedContainer = findViewById(R.id.relatedContainer);
         commentsContainer = findViewById(R.id.commentsContainer);
+        btnLoadMoreComments = findViewById(R.id.btnLoadMoreComments);
+        contentScrollView = findViewById(R.id.contentScrollView);
 
         tvTitle.setText(getIntent().getStringExtra("title"));
         tvAuthor.setText(getIntent().getStringExtra("author"));
@@ -109,8 +121,9 @@ public class VideoDetailActivity extends AppCompatActivity {
         btnSpeed.setOnClickListener(v -> showSpeedDialog());
         btnQuality.setOnClickListener(v -> showQualityDialog());
         btnFavorite.setOnClickListener(v -> toggleFavorite());
-        btnSubtitle.setOnClickListener(v -> Toast.makeText(this, "Subtitle - coming soon", Toast.LENGTH_SHORT).show());
-        surfaceView.setOnClickListener(v -> toggleControls());
+        btnSubtitle.setOnClickListener(v -> Toast.makeText(this, "\u5b57\u5e55 - \u5373\u5c06\u6765\u4e34", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.playerClickOverlay).setOnClickListener(v -> toggleControls());
+        btnLoadMoreComments.setOnClickListener(v -> loadMoreComments());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar sb, int p, boolean u) {}
@@ -136,6 +149,24 @@ public class VideoDetailActivity extends AppCompatActivity {
             tvAuthor.setText(video.getOwnerName());
             tvStats.setText(formatStat(video.getPlayCount(), video.getDanmakuCount()));
             ImageLoader.load(ivCover, video.getPic());
+            // Show publish date
+            if (video.getPubdate() > 0) {
+                tvPubdate.setVisibility(View.VISIBLE);
+                tvPubdate.setText("\\u53d1\\u5e03\\u4e8e " + formatDate(video.getPubdate()));
+            }
+            // Show description
+            String desc = video.getDescription();
+            if (desc != null && !desc.isEmpty()) {
+                tvDescription.setVisibility(View.VISIBLE);
+                tvDescription.setText(desc);
+                tvDescription.setOnClickListener(v -> {
+                    if (tvDescription.getMaxLines() == 3) {
+                        tvDescription.setMaxLines(Integer.MAX_VALUE);
+                    } else {
+                        tvDescription.setMaxLines(3);
+                    }
+                });
+            }
             loadVideo(bvid != null ? bvid : video.getBvid(), video.getCid());
         });
 
@@ -326,11 +357,29 @@ public class VideoDetailActivity extends AppCompatActivity {
     }
 
     private void loadComments() {
+        commentPage = 1;
+        hasMoreComments = true;
+        commentsContainer.removeAllViews();
+        fetchComments(1);
+    }
+
+    private void loadMoreComments() {
+        if (!hasMoreComments) return;
+        commentPage++;
+        fetchComments(commentPage);
+    }
+
+    private void fetchComments(int page) {
         if (aid <= 0) return;
-        repo.getComments(aid, 1, new VideoRepository.CallbackImpl<List<CommentItem>>() {
+        repo.getComments(aid, page, new VideoRepository.CallbackImpl<List<CommentItem>>() {
             @Override public void onSuccess(List<CommentItem> list) {
-                commentsContainer.removeAllViews();
-                int max = Math.min(list.size(), 10);
+                if (list == null || list.isEmpty()) {
+                    hasMoreComments = false;
+                    btnLoadMoreComments.setVisibility(View.GONE);
+                    return;
+                }
+                hasMoreComments = list.size() >= 20;
+                int max = Math.min(list.size(), 20);
                 for (int i = 0; i < max; i++) {
                     CommentItem c = list.get(i);
                     View item = getLayoutInflater().inflate(R.layout.item_comment, commentsContainer, false);
@@ -340,9 +389,11 @@ public class VideoDetailActivity extends AppCompatActivity {
                     ((TextView) item.findViewById(R.id.tvLike)).setText(c.getLike() + " \u8d5e");
                     commentsContainer.addView(item);
                 }
+                btnLoadMoreComments.setVisibility(hasMoreComments ? View.VISIBLE : View.GONE);
             }
             @Override public void onError(String e) {
-                DebugLogger.e("VideoDetail", "loadComments failed: " + e);
+                DebugLogger.e("VideoDetail", "loadComments page=" + page + " failed: " + e);
+                if (page > 1) commentPage--; // Roll back page counter on error
             }
         });
     }
@@ -380,13 +431,42 @@ public class VideoDetailActivity extends AppCompatActivity {
     private void toggleFullscreen() {
         isFullscreen = !isFullscreen;
         if (isFullscreen) {
+            // Save original orientation before locking
+            originalOrientation = getRequestedOrientation();
+            // Lock to landscape
+            if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
+            // Hide content and fill screen with player
+            contentScrollView.setVisibility(View.GONE);
+            // Immersive fullscreen
             getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
             btnFullscreen.setImageResource(android.R.drawable.ic_menu_revert);
         } else {
+            // Restore original orientation
+            setRequestedOrientation(originalOrientation);
+            // Show content again
+            contentScrollView.setVisibility(View.VISIBLE);
+            // Exit immersive mode
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
             btnFullscreen.setImageResource(android.R.drawable.ic_menu_zoom);
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Auto fullscreen when rotating to landscape, exit when portrait
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFullscreen) {
+            toggleFullscreen();
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT && isFullscreen) {
+            toggleFullscreen();
         }
     }
 
@@ -425,6 +505,11 @@ public class VideoDetailActivity extends AppCompatActivity {
     private String formatTime(int ms) {
         int s = ms / 1000;
         return String.format("%02d:%02d", s / 60, s % 60);
+    }
+
+    private String formatDate(long timestamp) {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+        return sdf.format(new java.util.Date(timestamp * 1000));
     }
 
     private String formatStat(long play, long danmaku) {

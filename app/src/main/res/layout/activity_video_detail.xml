@@ -8,7 +8,9 @@
     <FrameLayout
         android:id="@+id/playerContainer"
         android:layout_width="match_parent"
-        android:layout_height="240dp"
+        android:layout_height="0dp"
+        android:layout_weight="2"
+        android:minHeight="180dp"
         android:background="@color/black">
 
         <SurfaceView
@@ -22,6 +24,12 @@
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
             android:visibility="visible" />
+
+        <!-- Click overlay for toggling controls -->
+        <View
+            android:id="@+id/playerClickOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
         <LinearLayout
             android:id="@+id/loadingIndicator"
@@ -118,9 +126,11 @@
     </FrameLayout>
 
     <ScrollView
+        android:id="@+id/contentScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_weight="3"
+        android:fillViewport="true"
         android:background="@color/white">
 
         <LinearLayout
@@ -152,6 +162,25 @@
                 android:layout_marginTop="2dp"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvPubdate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:maxLines="3"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -222,6 +251,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/btnLoadMoreComments"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="\\u52a0\\u8f7d\\u66f4\\u591a\\u8bc4\\u8bba"
+                android:textColor="@color/bili_pink"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
         </LinearLayout>
 

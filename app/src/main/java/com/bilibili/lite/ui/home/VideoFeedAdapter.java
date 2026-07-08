@@ -45,7 +45,9 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedAdapter.View
         ImageLoader.load(holder.cover, video.getPic());
         holder.title.setText(video.getTitle());
         holder.author.setText(video.getOwnerName());
-        holder.playCount.setText(formatCount(video.getPlayCount()));
+        holder.playCount.setText(formatCount(video.getPlayCount()) + " \u64ad\u653e");
+        holder.duration.setText(formatDuration(video.getDuration()));
+        holder.playOverlay.setText(formatCount(video.getPlayCount()));
         holder.itemView.setOnClickListener(v -> listener.onVideoClick(video));
     }
 
@@ -57,9 +59,14 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedAdapter.View
         return String.valueOf(count);
     }
 
+    private String formatDuration(long seconds) {
+        if (seconds <= 0) return "00:00";
+        return String.format("%02d:%02d", seconds / 60, seconds % 60);
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView cover;
-        TextView title, author, playCount;
+        TextView title, author, playCount, duration, playOverlay;
 
         ViewHolder(View itemView) {
             super(itemView);
@@ -67,6 +74,8 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedAdapter.View
             title = itemView.findViewById(R.id.tvTitle);
             author = itemView.findViewById(R.id.tvAuthor);
             playCount = itemView.findViewById(R.id.tvPlayCount);
+            duration = itemView.findViewById(R.id.tvDuration);
+            playOverlay = itemView.findViewById(R.id.tvPlayOverlay);
         }
     }
 }
