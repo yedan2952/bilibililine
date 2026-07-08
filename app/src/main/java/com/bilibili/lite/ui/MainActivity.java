@@ -2,7 +2,6 @@ package com.bilibili.lite.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -15,7 +14,6 @@ import com.bilibili.lite.ui.home.HomeFragment;
 import com.bilibili.lite.ui.mine.MineFragment;
 import com.bilibili.lite.ui.search.SearchActivity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.xuexiang.xui.widget.actionbar.TitleBar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,25 +21,17 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private ViewPager viewPager;
-    private BottomNavigationView bottomNav;
-    private TitleBar titleBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        titleBar = findViewById(R.id.titleBar);
         viewPager = findViewById(R.id.viewPager);
-        bottomNav = findViewById(R.id.bottomNav);
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
-        titleBar.setTitle(getString(R.string.app_name));
-        titleBar.addAction(new TitleBar.ImageAction(R.drawable.ic_search) {
-            @Override
-            public void performAction(View view) {
-                startActivity(new Intent(MainActivity.this, SearchActivity.class));
-            }
-        });
+        findViewById(R.id.btnSearch).setOnClickListener(v ->
+                startActivity(new Intent(this, SearchActivity.class)));
 
         List<Fragment> fragments = new ArrayList<>();
         fragments.add(new HomeFragment());

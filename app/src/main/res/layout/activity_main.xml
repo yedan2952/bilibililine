@@ -5,10 +5,33 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.xuexiang.xui.widget.actionbar.TitleBar
+    <LinearLayout
         android:id="@+id/titleBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="48dp"
+        android:background="@color/bili_pink"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/btnSearch"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_search" />
+
+    </LinearLayout>
 
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/viewPager"
@@ -22,7 +45,7 @@
         android:layout_height="wrap_content"
         android:background="@color/white"
         app:menu="@menu/bottom_nav_menu"
-        app:itemIconTint="@color/bili_pink"
-        app:itemTextColor="@color/text_secondary" />
+        app:itemIconTint="@color/nav_color"
+        app:itemTextColor="@color/nav_color" />
 
 </LinearLayout>
