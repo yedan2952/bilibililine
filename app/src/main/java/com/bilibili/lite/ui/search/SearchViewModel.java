@@ -71,11 +71,16 @@ public class SearchViewModel extends AndroidViewModel {
     }
 
     public void search(String query) {
+        search(query, "video");
+    }
+
+    public void search(String query, String searchType) {
         if (!NetworkUtil.isNetworkAvailable(getApplication())) {
             error.setValue("无网络连接，请检查网络设置");
             return;
         }
         currentQuery = query;
+        currentSearchType = searchType;
         page = 1;
         results.setValue(new ArrayList<>());
         saveSearch(query);
@@ -87,13 +92,16 @@ public class SearchViewModel extends AndroidViewModel {
         executeSearch();
     }
 
+    private String currentSearchType = "video";
+
     private void executeSearch() {
         if (currentQuery == null || currentQuery.isEmpty()) return;
         loading.setValue(true);
         HashMap<String, String> raw = new HashMap<>();
         raw.put("keyword", currentQuery);
-        raw.put("search_type", "video");
+        raw.put("search_type", currentSearchType);
         raw.put("page", String.valueOf(page));
+        raw.put("page_size", "20");
         Map<String, String> params = WbiSigner.sign(raw);
         api.search(params).enqueue(new Callback<ApiService.BiliResponse<ApiService.SearchResultData>>() {
             @Override

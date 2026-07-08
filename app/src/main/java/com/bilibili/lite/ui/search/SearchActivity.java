@@ -7,6 +7,8 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,14 +24,19 @@ import com.bilibili.lite.util.DebugLogger;
 public class SearchActivity extends AppCompatActivity {
 
     private EditText searchInput;
-    private View clearBtn, emptyView;
+    private View clearBtn, emptyView, tabBar;
     private RecyclerView recyclerView;
     private VideoFeedAdapter adapter;
     private SearchViewModel viewModel;
     private final Handler searchHandler = new Handler();
+
+    private TextView tabVideo, tabBangumi, tabUser, tabLive, tabMedia, tabArticle;
+    private TextView[] allTabs;
+    private String currentSearchType = "video";
+
     private final Runnable searchRunnable = () -> {
         String q = searchInput.getText().toString().trim();
-        if (q.length() >= 2) viewModel.search(q);
+        if (q.length() >= 2) viewModel.search(q, currentSearchType);
     };
 
     @Override
@@ -43,6 +50,15 @@ public class SearchActivity extends AppCompatActivity {
         clearBtn = findViewById(R.id.btnClear);
         recyclerView = findViewById(R.id.recyclerView);
         emptyView = findViewById(R.id.emptyView);
+        tabBar = findViewById(R.id.tabBar);
+
+        tabVideo = findViewById(R.id.tabVideo);
+        tabBangumi = findViewById(R.id.tabBangumi);
+        tabUser = findViewById(R.id.tabUser);
+        tabLive = findViewById(R.id.tabLive);
+        tabMedia = findViewById(R.id.tabMedia);
+        tabArticle = findViewById(R.id.tabArticle);
+        allTabs = new TextView[]{tabVideo, tabBangumi, tabUser, tabLive, tabMedia, tabArticle};
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new VideoFeedAdapter(video -> {
@@ -56,8 +72,15 @@ public class SearchActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
-
         clearBtn.setOnClickListener(v -> searchInput.setText(""));
+
+        // Tab click listeners
+        tabVideo.setOnClickListener(v -> switchTab("video", tabVideo));
+        tabBangumi.setOnClickListener(v -> switchTab("bangumi", tabBangumi));
+        tabUser.setOnClickListener(v -> switchTab("bili_user", tabUser));
+        tabLive.setOnClickListener(v -> switchTab("live_room", tabLive));
+        tabMedia.setOnClickListener(v -> switchTab("media_bangumi", tabMedia));
+        tabArticle.setOnClickListener(v -> switchTab("article", tabArticle));
 
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -65,7 +88,6 @@ public class SearchActivity extends AppCompatActivity {
                 clearBtn.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
             }
             @Override public void afterTextChanged(Editable s) {
-                // Debounce: wait 500ms after user stops typing before searching
                 searchHandler.removeCallbacks(searchRunnable);
                 if (s.length() >= 2) {
                     searchHandler.postDelayed(searchRunnable, 500);
@@ -86,7 +108,9 @@ public class SearchActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(SearchViewModel.class);
         viewModel.getResults().observe(this, videos -> {
             adapter.submitList(videos);
-            emptyView.setVisibility(videos.isEmpty() ? View.VISIBLE : View.GONE);
+            tabBar.setVisibility(View.VISIBLE);
+            emptyView.setVisibility(videos.isEmpty() && searchInput.getText().length() >= 2
+                    ? View.VISIBLE : View.GONE);
         });
         viewModel.getError().observe(this, err -> {
             if (err != null) {
@@ -94,5 +118,20 @@ public class SearchActivity extends AppCompatActivity {
                 Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void switchTab(String type, TextView selectedTab) {
+        if (type.equals(currentSearchType)) return;
+        currentSearchType = type;
+        // Update tab styles
+        for (TextView tab : allTabs) {
+            tab.setTextColor(tab == selectedTab
+                    ? getColor(R.color.bili_pink) : getColor(R.color.text_secondary));
+            tab.setTypeface(null, tab == selectedTab ? android.graphics.Typeface.BOLD
+                    : android.graphics.Typeface.NORMAL);
+        }
+        // Re-run search with new type
+        String q = searchInput.getText().toString().trim();
+        if (q.length() >= 2) viewModel.search(q, currentSearchType);
     }
 }

@@ -19,6 +19,7 @@ public class WbiSigner {
     private static long lastFetch = 0;
     private static volatile boolean isRefreshing = false;
     private static final Object KEY_LOCK = new Object();
+    private static volatile java.util.concurrent.CountDownLatch keyLatch = null;
 
     private static final long KEY_EXPIRY_MS = 86400000L; // 24 hours
 
@@ -49,32 +50,16 @@ public class WbiSigner {
                 return;
             }
             isRefreshing = true;
+            keyLatch = new java.util.concurrent.CountDownLatch(1);
         }
 
         try {
-            okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                    .dns(hostname -> {
-                        int attempts = 0;
-                        while (attempts < 3) {
-                            try {
-                                return java.util.Arrays.asList(java.net.InetAddress.getAllByName(hostname));
-                            } catch (java.net.UnknownHostException e) {
-                                attempts++;
-                                if (attempts >= 3) throw e;
-                                try { Thread.sleep(1000 * attempts); } catch (InterruptedException ie) {
-                                    Thread.currentThread().interrupt();
-                                    throw e;
-                                }
-                            }
-                        }
-                        throw new java.net.UnknownHostException("Unable to resolve " + hostname);
-                    })
-                    .build();
+            // Use the shared OkHttpClient from RetrofitClient (has DNS retry, CookieJar, headers)
+            okhttp3.OkHttpClient client = RetrofitClient.getInstance().getOkHttpClient();
             okhttp3.Request request = new okhttp3.Request.Builder()
                     .url("https://api.bilibili.com/x/web-interface/nav")
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+                    .header("Referer", "https://www.bilibili.com")
                     .build();
             okhttp3.Response response = client.newCall(request).execute();
             String body = response.body() != null ? response.body().string() : "";
@@ -104,27 +89,47 @@ public class WbiSigner {
         } catch (Exception e) {
             DebugLogger.e("WbiSigner", "Failed to refresh key", e);
         } finally {
+            java.util.concurrent.CountDownLatch latch = keyLatch;
             isRefreshing = false;
+            keyLatch = null;
+            if (latch != null) latch.countDown();
         }
     }
 
     /**
      * Sign parameters with WBI signature.
      * If the key is not yet loaded, triggers an async background refresh
-     * and returns the params unsigned (best-effort). The next call will
-     * have the key ready.
+     * and waits up to 2 seconds for it. If the key still isn't ready,
+     * returns the params unsigned (best-effort).
      */
     public static Map<String, String> sign(Map<String, String> params) {
-        // ── Key is empty: trigger async refresh, return unsigned ──
+        // ── Key is empty: trigger async refresh and wait briefly ──
         if (mixinKey.isEmpty()) {
-            if (!isRefreshing) {
+            boolean startedRefresh = false;
+            synchronized (KEY_LOCK) {
+                if (!isRefreshing) {
+                    isRefreshing = true;
+                    keyLatch = new java.util.concurrent.CountDownLatch(1);
+                    startedRefresh = true;
+                }
+            }
+            if (startedRefresh) {
                 new Thread(() -> refreshKey()).start();
             }
-            // Return params unsigned — the API may still work without WBI
-            // on some endpoints, or the key might arrive before the request
-            // completes (race with enqueue).
-            DebugLogger.w("WbiSigner", "Key not ready, returning unsigned params");
-            return params;
+            // Wait for the refresh to complete (up to 2s)
+            java.util.concurrent.CountDownLatch latch = keyLatch;
+            if (latch != null) {
+                try {
+                    latch.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            // If key still empty, give up
+            if (mixinKey.isEmpty()) {
+                DebugLogger.w("WbiSigner", "Key not ready after waiting, returning unsigned params");
+                return params;
+            }
         }
 
         // ── Key is expired: refresh in background, keep using current key ──

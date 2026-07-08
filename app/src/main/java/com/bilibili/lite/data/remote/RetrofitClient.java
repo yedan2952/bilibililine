@@ -12,7 +12,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
 import okhttp3.Dns;
+import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -47,6 +50,7 @@ public class RetrofitClient {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .dns(new RetryDns())
+                .cookieJar(new PersistentCookieJar())
                 .addInterceptor(logging)
                 .addInterceptor(new UserAgentInterceptor())
                 .addInterceptor(new RetryInterceptor(MAX_RETRIES))
@@ -119,6 +123,32 @@ public class RetrofitClient {
     }
 
     // ──────── Retry interceptor for transient failures ────────
+
+    // ──────── In-memory cookie jar for session persistence ────────
+
+    private static class PersistentCookieJar implements CookieJar {
+        private final java.util.HashMap<String, java.util.List<Cookie>> cookieStore = new java.util.HashMap<>();
+
+        @Override
+        public void saveFromResponse(HttpUrl url, java.util.List<Cookie> cookies) {
+            String host = url.host();
+            java.util.ArrayList<Cookie> existing = new java.util.ArrayList<>();
+            java.util.List<Cookie> saved = cookieStore.get(host);
+            if (saved != null) existing.addAll(saved);
+            // Replace old cookies with same name
+            for (Cookie c : cookies) {
+                existing.removeIf(old -> old.name().equals(c.name()));
+                existing.add(c);
+            }
+            cookieStore.put(host, existing);
+        }
+
+        @Override
+        public java.util.List<Cookie> loadForRequest(HttpUrl url) {
+            java.util.List<Cookie> cookies = cookieStore.get(url.host());
+            return cookies != null ? cookies : new java.util.ArrayList<>();
+        }
+    }
 
     private static class RetryInterceptor implements Interceptor {
         private final int maxRetries;

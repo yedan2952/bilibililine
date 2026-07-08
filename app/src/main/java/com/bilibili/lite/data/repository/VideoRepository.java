@@ -62,7 +62,7 @@ public class VideoRepository {
         params.put("bvid", bvid);
         params.put("cid", String.valueOf(cid));
         params.put("qn", String.valueOf(qn));
-        params.put("fnval", "4048"); // DURL(1) + DASH(16) + HDR(64) + 4K
+        params.put("fnval", "1"); // DURL (progressive MP4, compatible with MediaPlayer)
         params.put("fnver", "0");
         params.put("fourk", "1");
         params.put("otype", "json");
@@ -89,24 +89,13 @@ public class VideoRepository {
                         }
                         r.backupUrls = backups.toArray(new String[0]);
                     }
-                    // Try DASH format as additional fallback
-                    if (data.dash != null && data.dash.video != null) {
-                        java.util.ArrayList<String> backups = new java.util.ArrayList<>();
-                        if (r.backupUrls != null) {
-                            java.util.Collections.addAll(backups, r.backupUrls);
-                        }
-                        for (ApiService.DashStream ds : data.dash.video) {
-                            String base = ds.baseUrl;
-                            if (base == null) base = ds.base_url;
-                            if (base != null) backups.add(base);
-                        }
-                        r.backupUrls = backups.toArray(new String[0]);
-                        // If no durl at all, use first dash URL as primary
-                        if (r.url == null && data.dash.video.length > 0) {
-                            String base = data.dash.video[0].baseUrl;
-                            if (base == null) base = data.dash.video[0].base_url;
-                            if (base != null) r.url = base;
-                        }
+                    // If durl is not available, try DASH as absolute last resort
+                    // (MediaPlayer does NOT support DASH, but some URLs might be progressive)
+                    if (r.url == null && data.dash != null && data.dash.video != null
+                            && data.dash.video.length > 0) {
+                        String base = data.dash.video[0].baseUrl;
+                        if (base == null) base = data.dash.video[0].base_url;
+                        if (base != null) r.url = base;
                     }
                     r.acceptDesc = data.accept_description;
                     r.acceptQuality = data.accept_quality;

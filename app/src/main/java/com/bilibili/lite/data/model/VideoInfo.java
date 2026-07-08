@@ -36,13 +36,32 @@ public class VideoInfo {
     @SerializedName("owner")
     private Owner owner;
 
+    // --- Search API fields (top-level, not nested in stat) ---
+    @SerializedName("play")
+    private long searchPlay;
+
+    @SerializedName("video_review")
+    private long searchDanmaku;
+
+    @SerializedName("author")
+    private String searchAuthor;
+
+    @SerializedName("mid")
+    private long searchMid;
+
     @SerializedName("stat")
     private Stat stat;
 
     public String getBvid() { return bvid; }
     public long getAid() { return aid; }
     public long getCid() { return cid; }
-    public String getTitle() { return title; }
+    public String getTitle() {
+        // Strip HTML tags from search titles (e.g. "<em>test</em> video")
+        if (title != null) {
+            return title.replaceAll("<[^>]*>", "");
+        }
+        return title;
+    }
     public String getPic() { return pic; }
 
     /** Returns duration in seconds, parsing "mm:ss" format if needed. */
@@ -64,11 +83,26 @@ public class VideoInfo {
 
     public long getPubdate() { return pubdate; }
     public String getDescription() { return description; }
-    public String getOwnerName() { return owner != null ? owner.name : ""; }
-    public long getOwnerMid() { return owner != null ? owner.mid : 0; }
+    public String getOwnerName() {
+        // Search API returns author at top level
+        if (owner != null && owner.name != null && !owner.name.isEmpty()) return owner.name;
+        if (searchAuthor != null && !searchAuthor.isEmpty()) return searchAuthor;
+        return "";
+    }
+    public long getOwnerMid() {
+        if (owner != null) return owner.mid;
+        return searchMid;
+    }
     public String getOwnerFace() { return owner != null ? owner.face : ""; }
-    public long getPlayCount() { return stat != null ? stat.view : 0; }
-    public long getDanmakuCount() { return stat != null ? stat.danmaku : 0; }
+    public long getPlayCount() {
+        // Search API returns play at top level, not in stat
+        if (stat != null && stat.view > 0) return stat.view;
+        return searchPlay;
+    }
+    public long getDanmakuCount() {
+        if (stat != null && stat.danmaku > 0) return stat.danmaku;
+        return searchDanmaku;
+    }
     public long getLikeCount() { return stat != null ? stat.like : 0; }
     public long getCoinCount() { return stat != null ? stat.coin : 0; }
     public long getFavoriteCount() { return stat != null ? stat.favorite : 0; }
