@@ -184,6 +184,8 @@ public class VideoDetailActivity extends AppCompatActivity {
                 .setReadTimeoutMs(30000);
         java.util.HashMap<String, String> defaultHeaders = new java.util.HashMap<>();
         defaultHeaders.put("Referer", "https://www.bilibili.com");
+        defaultHeaders.put("Origin", "https://www.bilibili.com");
+        defaultHeaders.put("User-Agent", Constants.USER_AGENT);
         // Share cookies from OkHttpClient with ExoPlayer via Cookie header
         okhttp3.HttpUrl httpUrl = okhttp3.HttpUrl.parse(url);
         if (httpUrl != null) {
