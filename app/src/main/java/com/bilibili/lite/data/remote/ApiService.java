@@ -11,9 +11,6 @@ import retrofit2.http.QueryMap;
 
 public interface ApiService {
 
-    String BASE_URL = "https://api.bilibili.com/";
-    String PASSPORT_URL = "https://passport.bilibili.com/";
-
     @GET("x/web-interface/view")
     Call<BiliResponse<VideoInfo>> getVideoInfo(@QueryMap Map<String, String> params);
 
@@ -32,34 +29,13 @@ public interface ApiService {
     @GET("x/web-interface/nav")
     Call<BiliResponse<UserInfo>> getNavInfo();
 
+    @GET("x/web-interface/related")
+    Call<List<VideoInfo>> getRelated(@QueryMap Map<String, String> params);
+
     class BiliResponse<T> {
         public int code;
         public String message;
         public T data;
-    }
-
-    class QrCodeResponse {
-        public int code;
-        public String message;
-        public QrCodeData data;
-    }
-
-    class QrCodeData {
-        public String url;
-        public String qrcode_key;
-    }
-
-    class QrPollResponse {
-        public int code;
-        public String message;
-        public QrPollData data;
-    }
-
-    class QrPollData {
-        public String url;
-        public int refresh_token;
-        public long timestamp;
-        public int code;
     }
 
     class PopularResult {
@@ -83,7 +59,10 @@ public interface ApiService {
     class PlayUrlData {
         public long totalSize;
         public String format;
+        public String[] accept_description;
+        public int[] accept_quality;
         public DUrlInfo[] durl;
+        public DashData dash;
     }
 
     class DUrlInfo {
@@ -94,12 +73,20 @@ public interface ApiService {
         public String[] backup_url;
     }
 
-    class WbiKey {
-        public WbiKeyData data;
+    class DashData {
+        public DashStream[] video;
+        public DashStream[] audio;
     }
 
-    class WbiKeyData {
-        public String img_key;
-        public String sub_key;
+    class DashStream {
+        public int id;
+        public String baseUrl;
+        public String base_url;
+        public String mimeType;
+        public String mime_type;
+        public String codecs;
+        public int bandwidth;
+        public int width;
+        public int height;
     }
 }

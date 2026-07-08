@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BiliLite" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">@color/bili_pink_dark</item>
+        <item name="colorPrimaryDark">#111111</item>
+        <item name="colorAccent">@color/bili_pink_dark</item>
+        <item name="android:windowBackground">#1E1E1E</item>
+        <item name="android:textColorPrimary">#E0E0E0</item>
+        <item name="android:textColorSecondary">#888888</item>
+    </style>
+</resources>

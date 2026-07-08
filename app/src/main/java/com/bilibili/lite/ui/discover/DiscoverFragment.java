@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -45,6 +46,9 @@ public class DiscoverFragment extends Fragment {
 
         view.findViewById(R.id.searchBar).setOnClickListener(v ->
                 startActivity(new Intent(getActivity(), SearchActivity.class)));
+
+        view.findViewById(R.id.liveSection).setOnClickListener(v ->
+                Toast.makeText(getContext(), "Live - coming soon", Toast.LENGTH_SHORT).show());
 
         viewModel = new ViewModelProvider(this).get(DiscoverViewModel.class);
         viewModel.trending.observe(getViewLifecycleOwner(), videos -> adapter.submitList(videos));

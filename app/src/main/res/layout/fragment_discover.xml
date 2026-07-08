@@ -19,6 +19,36 @@
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
+    <LinearLayout
+        android:id="@+id/liveSection"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/search_bg"
+        android:gravity="center_vertical"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawableLeft="@android:drawable/ic_menu_share"
+            android:drawablePadding="8dp"
+            android:text="\u76f4\u64ad \u00b7 \u770b\u5c0f\u59d0\u59d0\u54aa\u53e3\u7ea2"
+            android:textColor="@color/bili_pink"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=">"
+            android:textColor="@color/text_secondary" />
+
+    </LinearLayout>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

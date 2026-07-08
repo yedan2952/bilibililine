@@ -1,6 +1,7 @@
 package com.bilibili.lite.ui.mine;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,17 +11,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import com.bilibili.lite.R;
 import com.bilibili.lite.ui.login.LoginActivity;
+import com.bilibili.lite.util.DarkThemeHelper;
 import com.bilibili.lite.util.ImageLoader;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.List;
 
 public class MineFragment extends Fragment {
 
     private MineViewModel viewModel;
     private ImageView avatar;
-    private TextView tvName, tvSign, tvLevel;
+    private TextView tvName, tvSign, tvLevel, tvHistoryCount, tvFavoriteCount;
     private View loginCard, userCard;
 
     @Nullable
@@ -39,16 +46,37 @@ public class MineFragment extends Fragment {
         tvLevel = view.findViewById(R.id.tvLevel);
         loginCard = view.findViewById(R.id.loginCard);
         userCard = view.findViewById(R.id.userCard);
+        tvHistoryCount = view.findViewById(R.id.tvHistoryCount);
+        tvFavoriteCount = view.findViewById(R.id.tvFavoriteCount);
 
         loginCard.setOnClickListener(v ->
                 startActivity(new Intent(getActivity(), LoginActivity.class)));
 
-        view.findViewById(R.id.menuHistory).setOnClickListener(v ->
-                Toast.makeText(getContext(), "History - coming soon", Toast.LENGTH_SHORT).show());
-        view.findViewById(R.id.menuFavorites).setOnClickListener(v ->
-                Toast.makeText(getContext(), "Favorites - coming soon", Toast.LENGTH_SHORT).show());
-        view.findViewById(R.id.menuSettings).setOnClickListener(v ->
-                Toast.makeText(getContext(), "Settings - coming soon", Toast.LENGTH_SHORT).show());
+        view.findViewById(R.id.menuHistory).setOnClickListener(v -> {
+            SharedPreferences prefs = getActivity().getSharedPreferences("bili", 0);
+            String json = prefs.getString("history", "[]");
+            Type t = new TypeToken<List<String>>(){}.getType();
+            List<String> h = new Gson().fromJson(json, t);
+            Toast.makeText(getContext(), "History: " + h.size() + " videos", Toast.LENGTH_SHORT).show();
+        });
+
+        view.findViewById(R.id.menuFavorites).setOnClickListener(v -> {
+            SharedPreferences prefs = getActivity().getSharedPreferences("bili", 0);
+            int count = prefs.getStringSet("favorites", new java.util.HashSet<>()).size();
+            Toast.makeText(getContext(), "Favorites: " + count + " videos", Toast.LENGTH_SHORT).show();
+        });
+
+        view.findViewById(R.id.menuSettings).setOnClickListener(v -> {
+            boolean dark = DarkThemeHelper.isDark(getActivity());
+            new AlertDialog.Builder(getContext())
+                    .setTitle("Settings")
+                    .setItems(new String[]{
+                            (dark ? "\u2713 " : "") + "Dark Mode"
+                    }, (d, i) -> DarkThemeHelper.toggle(getActivity()))
+                    .show();
+        });
+
+        updateCounts();
 
         viewModel = new ViewModelProvider(this).get(MineViewModel.class);
         viewModel.loggedIn.observe(getViewLifecycleOwner(), logged -> {
@@ -64,5 +92,21 @@ public class MineFragment extends Fragment {
         });
 
         viewModel.loadUserInfo();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateCounts();
+    }
+
+    private void updateCounts() {
+        SharedPreferences prefs = getActivity().getSharedPreferences("bili", 0);
+        String json = prefs.getString("history", "[]");
+        Type t = new TypeToken<List<String>>(){}.getType();
+        List<String> h = new Gson().fromJson(json, t);
+        int fav = prefs.getStringSet("favorites", new java.util.HashSet<>()).size();
+        if (tvHistoryCount != null) tvHistoryCount.setText(h.size() + " items");
+        if (tvFavoriteCount != null) tvFavoriteCount.setText(fav + " items");
     }
 }

@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import com.bilibili.lite.R;
+import com.bilibili.lite.util.DarkThemeHelper;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -24,6 +25,7 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 

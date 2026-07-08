@@ -13,6 +13,7 @@ import com.bilibili.lite.ui.discover.DiscoverFragment;
 import com.bilibili.lite.ui.home.HomeFragment;
 import com.bilibili.lite.ui.mine.MineFragment;
 import com.bilibili.lite.ui.search.SearchActivity;
+import com.bilibili.lite.util.DarkThemeHelper;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 

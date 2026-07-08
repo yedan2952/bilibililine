@@ -18,6 +18,7 @@ import com.bilibili.lite.R;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.ui.home.VideoFeedAdapter;
 import com.bilibili.lite.ui.video.VideoDetailActivity;
+import com.bilibili.lite.util.DarkThemeHelper;
 
 public class SearchActivity extends AppCompatActivity {
 
@@ -29,6 +30,7 @@ public class SearchActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        DarkThemeHelper.apply(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
 

@@ -101,6 +101,14 @@
             android:textSize="15sp" />
 
         <TextView
+            android:id="@+id/tvHistoryCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="8dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=">"
@@ -129,6 +137,14 @@
             android:text="@string/favorites"
             android:textColor="@color/text_primary"
             android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/tvFavoriteCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="8dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
 
         <TextView
             android:layout_width="wrap_content"
