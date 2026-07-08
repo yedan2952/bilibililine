@@ -28,6 +28,9 @@ jobs:
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" --sdk_root=$ANDROID_HOME
 
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.5
+
       - name: Build arm8 APK (armv7a + arm64)
         run: ./gradlew assembleArm8Debug
 
