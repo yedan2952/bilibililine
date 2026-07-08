@@ -3,14 +3,13 @@ package com.bilibili.lite.data.repository;
 import com.bilibili.lite.data.model.UserInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
+import com.bilibili.lite.util.DebugLogger;
+import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.json.JSONObject;
-import retrofit2.Call;
 import retrofit2.Callback;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 public class UserRepository {
 
@@ -48,41 +47,53 @@ public class UserRepository {
     }
 
     public void generateQrCode(final QrCallback callback) {
-        new Thread(() -> {
-            try {
-                Request request = new Request.Builder()
-                        .url("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
-                        .header("User-Agent", "Mozilla/5.0")
-                        .build();
-                Response resp = okHttp.newCall(request).execute();
-                String body = resp.body() != null ? resp.body().string() : "";
-                JSONObject json = new JSONObject(body);
-                JSONObject data = json.getJSONObject("data");
-                String url = data.getString("url");
-                String key = data.getString("qrcode_key");
-                callback.onGenerated(url, key);
-            } catch (Exception e) {
+        Request request = new Request.Builder()
+                .url("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
+                .header("User-Agent", "Mozilla/5.0")
+                .header("Referer", "https://www.bilibili.com")
+                .build();
+        okHttp.newCall(request).enqueue(new okhttp3.Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) {
+                DebugLogger.e("UserRepo", "generateQrCode failed", e);
                 callback.onError(e.getMessage());
             }
-        }).start();
+            @Override public void onResponse(Call call, Response resp) {
+                try {
+                    String body = resp.body() != null ? resp.body().string() : "";
+                    JSONObject json = new JSONObject(body);
+                    JSONObject data = json.getJSONObject("data");
+                    String url = data.getString("url");
+                    String key = data.getString("qrcode_key");
+                    callback.onGenerated(url, key);
+                } catch (Exception e) {
+                    callback.onError(e.getMessage());
+                }
+            }
+        });
     }
 
     public void pollQrLogin(String qrcodeKey, final QrPollCallback callback) {
-        new Thread(() -> {
-            try {
-                Request request = new Request.Builder()
-                        .url("https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=" + qrcodeKey)
-                        .header("User-Agent", "Mozilla/5.0")
-                        .build();
-                Response resp = okHttp.newCall(request).execute();
-                String body = resp.body() != null ? resp.body().string() : "";
-                JSONObject json = new JSONObject(body);
-                int code = json.getJSONObject("data").getInt("code");
-                callback.onResult(code);
-            } catch (Exception e) {
+        Request request = new Request.Builder()
+                .url("https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=" + qrcodeKey)
+                .header("User-Agent", "Mozilla/5.0")
+                .header("Referer", "https://www.bilibili.com")
+                .build();
+        okHttp.newCall(request).enqueue(new okhttp3.Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) {
+                DebugLogger.e("UserRepo", "pollQrLogin failed", e);
                 callback.onError(e.getMessage());
             }
-        }).start();
+            @Override public void onResponse(Call call, Response resp) {
+                try {
+                    String body = resp.body() != null ? resp.body().string() : "";
+                    JSONObject json = new JSONObject(body);
+                    int code = json.getJSONObject("data").getInt("code");
+                    callback.onResult(code);
+                } catch (Exception e) {
+                    callback.onError(e.getMessage());
+                }
+            }
+        });
     }
 
     public interface CallbackImpl<T> {

@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.SurfaceHolder;
@@ -19,6 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
+import com.bilibili.lite.R;
 import com.bilibili.lite.data.model.CommentItem;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.repository.VideoRepository;
@@ -307,7 +309,13 @@ public class VideoDetailActivity extends AppCompatActivity {
                     relatedContainer.addView(card);
                 }
             }
-            @Override public void onError(String e) {}
+            @Override public void onError(String e) {
+                DebugLogger.e("VideoDetail", "loadRelated failed: " + e);
+                relatedContainer.removeAllViews();
+                View tip = getLayoutInflater().inflate(R.layout.item_related_video, relatedContainer, false);
+                ((TextView) tip.findViewById(R.id.tvTitle)).setText("推荐加载失败");
+                relatedContainer.addView(tip);
+            }
         });
     }
 
@@ -327,7 +335,9 @@ public class VideoDetailActivity extends AppCompatActivity {
                     commentsContainer.addView(item);
                 }
             }
-            @Override public void onError(String e) {}
+            @Override public void onError(String e) {
+                DebugLogger.e("VideoDetail", "loadComments failed: " + e);
+            }
         });
     }
 

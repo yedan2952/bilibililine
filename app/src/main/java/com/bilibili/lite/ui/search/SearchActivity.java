@@ -2,12 +2,11 @@ package com.bilibili.lite.ui.search;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,7 +14,6 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bilibili.lite.R;
-import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.ui.home.VideoFeedAdapter;
 import com.bilibili.lite.ui.video.VideoDetailActivity;
 import com.bilibili.lite.util.DarkThemeHelper;
@@ -28,6 +26,11 @@ public class SearchActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private VideoFeedAdapter adapter;
     private SearchViewModel viewModel;
+    private final Handler searchHandler = new Handler();
+    private final Runnable searchRunnable = () -> {
+        String q = searchInput.getText().toString().trim();
+        if (q.length() >= 2) viewModel.search(q);
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,7 +65,11 @@ public class SearchActivity extends AppCompatActivity {
                 clearBtn.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
             }
             @Override public void afterTextChanged(Editable s) {
-                if (s.length() >= 2) viewModel.search(s.toString());
+                // Debounce: wait 500ms after user stops typing before searching
+                searchHandler.removeCallbacks(searchRunnable);
+                if (s.length() >= 2) {
+                    searchHandler.postDelayed(searchRunnable, 500);
+                }
             }
         });
 
