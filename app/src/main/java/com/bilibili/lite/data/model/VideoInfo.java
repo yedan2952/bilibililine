@@ -19,8 +19,13 @@ public class VideoInfo {
     @SerializedName("pic")
     private String pic;
 
+    /**
+     * Duration in seconds.
+     * Bilibili API may return it as a number (seconds) or a string ("mm:ss").
+     * We store as String and parse to long via getDuration().
+     */
     @SerializedName("duration")
-    private long duration;
+    private String duration;
 
     @SerializedName("pubdate")
     private long pubdate;
@@ -39,7 +44,24 @@ public class VideoInfo {
     public long getCid() { return cid; }
     public String getTitle() { return title; }
     public String getPic() { return pic; }
-    public long getDuration() { return duration; }
+
+    /** Returns duration in seconds, parsing "mm:ss" format if needed. */
+    public long getDuration() {
+        if (duration == null) return 0;
+        try {
+            return Long.parseLong(duration);
+        } catch (NumberFormatException e) {
+            // Try parsing "mm:ss" format (e.g. "5:30" → 330 seconds)
+            String[] parts = duration.split(":");
+            if (parts.length == 2) {
+                try {
+                    return Long.parseLong(parts[0]) * 60 + Long.parseLong(parts[1]);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return 0;
+    }
+
     public long getPubdate() { return pubdate; }
     public String getDescription() { return description; }
     public String getOwnerName() { return owner != null ? owner.name : ""; }
