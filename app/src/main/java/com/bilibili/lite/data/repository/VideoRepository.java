@@ -63,6 +63,34 @@ public class VideoRepository {
         });
     }
 
+    public void getPlayUrl(String bvid, long cid, CallbackImpl<String> callback) {
+        java.util.HashMap<String, String> params = new java.util.HashMap<>();
+        params.put("bvid", bvid);
+        params.put("cid", String.valueOf(cid));
+        params.put("qn", "32");
+        params.put("platform", "android");
+        params.put("otype", "json");
+        params.put("high_quality", "1");
+        api.getPlayUrl(params).enqueue(new Callback<ApiService.BiliResponse<ApiService.PlayUrlData>>() {
+            @Override
+            public void onResponse(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call,
+                                   Response<ApiService.BiliResponse<ApiService.PlayUrlData>> response) {
+                if (response.isSuccessful() && response.body() != null
+                        && response.body().data != null && response.body().data.durl != null
+                        && response.body().data.durl.length > 0) {
+                    callback.onSuccess(response.body().data.durl[0].url);
+                } else {
+                    callback.onError("No playable URL");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call, Throwable t) {
+                callback.onError(t.getMessage());
+            }
+        });
+    }
+
     public interface CallbackImpl<T> {
         void onSuccess(T result);
         void onError(String error);

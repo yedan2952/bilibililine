@@ -22,6 +22,9 @@ public interface ApiService {
     @GET("x/v2/reply/wbi/main")
     Call<BiliResponse<CommentResult>> getComments(@QueryMap Map<String, String> params);
 
+    @GET("x/player/playurl")
+    Call<BiliResponse<PlayUrlData>> getPlayUrl(@QueryMap Map<String, String> params);
+
     class BiliResponse<T> {
         public int code;
         public String message;
@@ -44,5 +47,19 @@ public interface ApiService {
     class CommentCursor {
         public int next;
         public boolean is_end;
+    }
+
+    class PlayUrlData {
+        public long totalSize;
+        public String format;
+        public DUrlInfo[] durl;
+    }
+
+    class DUrlInfo {
+        public int order;
+        public long length;
+        public long size;
+        public String url;
+        public String[] backup_url;
     }
 }

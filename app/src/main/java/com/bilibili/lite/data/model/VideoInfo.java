@@ -10,6 +10,9 @@ public class VideoInfo {
     @SerializedName("aid")
     private long aid;
 
+    @SerializedName("cid")
+    private long cid;
+
     @SerializedName("title")
     private String title;
 
@@ -33,6 +36,7 @@ public class VideoInfo {
 
     public String getBvid() { return bvid; }
     public long getAid() { return aid; }
+    public long getCid() { return cid; }
     public String getTitle() { return title; }
     public String getPic() { return pic; }
     public long getDuration() { return duration; }
