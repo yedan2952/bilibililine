@@ -88,5 +88,7 @@ public interface ApiService {
         public int bandwidth;
         public int width;
         public int height;
+        public String[] backupUrl;
+        public String[] backup_url;
     }
 }

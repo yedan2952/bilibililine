@@ -26,6 +26,7 @@ import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.source.MergingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
@@ -56,6 +57,7 @@ public class VideoDetailActivity extends AppCompatActivity {
     private long aid;
     private int currentQn = 32;
     private String[] backupUrls;
+    private String currentAudioUrl;
     private int currentUrlIndex = 0;
     private int originalOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
     private ScrollView contentScrollView;
@@ -150,26 +152,29 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         repo.getPlayUrl(bvid, cid, qn, new VideoRepository.CallbackImpl<VideoRepository.PlayUrlResult>() {
             @Override public void onSuccess(VideoRepository.PlayUrlResult r) {
-                DebugLogger.i("VideoDetail", "Got play URL, qn=" + qn + " url=" + (r.url != null ? r.url.substring(0, Math.min(80, r.url.length())) : "null"));
-                backupUrls = r.backupUrls;
-                currentUrlIndex = 0;
-                initExoPlayer(r.url);
+                String logUrl = r.isDash ? r.videoUrl : r.url;
+                DebugLogger.i("VideoDetail", "Got play URL, qn=" + qn + " dash=" + r.isDash
+                        + " url=" + (logUrl != null ? logUrl.substring(0, Math.min(80, logUrl.length())) : "null"));
+                backupUrls = r.isDash ? r.videoBackupUrls : r.backupUrls;
+                currentAudioUrl = r.isDash ? r.audioUrl : null;
+                currentUrlIndex = -1;
+                initExoPlayer(r);
             }
+
             @Override public void onError(String e) {
                 showLoading(false);
                 DebugLogger.e("VideoDetail", "Play URL error: " + e);
                 String msg = e;
                 if (msg != null && msg.contains("Unable to resolve host")) {
                     msg = "网络连接失败，请检查网络设置或切换网络后重试";
-                } else if (msg != null && msg.contains("timeout") || (msg != null && msg.contains("Timeout"))) {
+                } else if (msg != null && (msg.contains("timeout") || msg.contains("Timeout"))) {
                     msg = "连接超时，请检查网络后重试";
                 }
                 Toast.makeText(VideoDetailActivity.this, msg, Toast.LENGTH_LONG).show();
             }
         });
     }
-
-    private void initExoPlayer(String url) {
+    private void initExoPlayer(VideoRepository.PlayUrlResult playUrl) {
         releasePlayer();
         showLoading(true);
         ivCover.setVisibility(View.GONE);
@@ -187,8 +192,15 @@ public class VideoDetailActivity extends AppCompatActivity {
         headers.put("Origin", "https://www.bilibili.com");
         dataSourceFactory.setDefaultRequestProperties(headers);
 
-        MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(url)));
+        ProgressiveMediaSource.Factory sourceFactory = new ProgressiveMediaSource.Factory(dataSourceFactory);
+        MediaSource mediaSource;
+        if (playUrl.isDash) {
+            MediaSource videoSource = sourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(playUrl.videoUrl)));
+            MediaSource audioSource = sourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(playUrl.audioUrl)));
+            mediaSource = new MergingMediaSource(videoSource, audioSource);
+        } else {
+            mediaSource = sourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(playUrl.url)));
+        }
 
         // Build ExoPlayer
         exoPlayer = new ExoPlayer.Builder(this)
@@ -227,9 +239,17 @@ public class VideoDetailActivity extends AppCompatActivity {
             DebugLogger.i("VideoDetail", "Trying backup URL #" + currentUrlIndex);
             Toast.makeText(VideoDetailActivity.this, "正在切换到备用线路...", Toast.LENGTH_SHORT).show();
             showLoading(true);
-            initExoPlayer(fallbackUrl);
+            VideoRepository.PlayUrlResult fallback = new VideoRepository.PlayUrlResult();
+            if (currentAudioUrl != null) {
+                fallback.isDash = true;
+                fallback.videoUrl = fallbackUrl;
+                fallback.audioUrl = currentAudioUrl;
+            } else {
+                fallback.url = fallbackUrl;
+            }
+            initExoPlayer(fallback);
         } else {
-            String errorMsg = "视频加载失败，请尝试切换画质或稍后重试";
+            String errorMsg = "视频加载失败，请稍后重试";
             Toast.makeText(VideoDetailActivity.this, errorMsg, Toast.LENGTH_LONG).show();
         }
     }

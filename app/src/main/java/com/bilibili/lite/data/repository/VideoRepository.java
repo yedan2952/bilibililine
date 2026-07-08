@@ -62,7 +62,7 @@ public class VideoRepository {
         params.put("bvid", bvid);
         params.put("cid", String.valueOf(cid));
         params.put("qn", String.valueOf(qn));
-        params.put("fnval", "1"); // DURL (progressive MP4, compatible with MediaPlayer)
+        params.put("fnval", "16"); // DASH streams; ExoPlayer merges video and audio tracks.
         params.put("fnver", "0");
         params.put("fourk", "1");
         params.put("otype", "json");
@@ -75,7 +75,16 @@ public class VideoRepository {
                 if (response.isSuccessful() && response.body() != null && response.body().data != null) {
                     PlayUrlResult r = new PlayUrlResult();
                     ApiService.PlayUrlData data = response.body().data;
-                    if (data.durl != null && data.durl.length > 0) {
+                    if (data.dash != null && data.dash.video != null
+                            && data.dash.video.length > 0) {
+                        ApiService.DashStream video = chooseVideoStream(data.dash.video, qn);
+                        ApiService.DashStream audio = chooseAudioStream(data.dash.audio);
+                        r.videoUrl = getStreamUrl(video);
+                        r.audioUrl = getStreamUrl(audio);
+                        r.videoBackupUrls = getBackupUrls(video);
+                        r.isDash = r.videoUrl != null && r.audioUrl != null;
+                    }
+                    if (!r.isDash && data.durl != null && data.durl.length > 0) {
                         r.url = data.durl[0].url;
                         // Collect all available backup URLs for fallback
                         java.util.ArrayList<String> backups = new java.util.ArrayList<>();
@@ -92,17 +101,9 @@ public class VideoRepository {
                         }
                         r.backupUrls = backups.toArray(new String[0]);
                     }
-                    // If durl is not available, try DASH as absolute last resort
-                    // (MediaPlayer does NOT support DASH, but some URLs might be progressive)
-                    if (r.url == null && data.dash != null && data.dash.video != null
-                            && data.dash.video.length > 0) {
-                        String base = data.dash.video[0].baseUrl;
-                        if (base == null) base = data.dash.video[0].base_url;
-                        if (base != null) r.url = base;
-                    }
                     r.acceptDesc = data.accept_description;
                     r.acceptQuality = data.accept_quality;
-                    if (r.url != null) callback.onSuccess(r);
+                    if (r.isDash || r.url != null) callback.onSuccess(r);
                     else callback.onError("No playable URL in response");
                 } else callback.onError("API error: " + (response.body() != null ? response.body().message : "unknown"));
             }
@@ -111,6 +112,57 @@ public class VideoRepository {
                 callback.onError(t.getMessage());
             }
         });
+    }
+
+    private ApiService.DashStream chooseVideoStream(ApiService.DashStream[] streams, int qn) {
+        ApiService.DashStream best = null;
+        for (ApiService.DashStream stream : streams) {
+            if (getStreamUrl(stream) == null) continue;
+            if (stream.id <= qn && (best == null || stream.id > best.id)) {
+                best = stream;
+            }
+        }
+        if (best != null) return best;
+        for (ApiService.DashStream stream : streams) {
+            if (getStreamUrl(stream) != null && (best == null || stream.id > best.id)) {
+                best = stream;
+            }
+        }
+        return best;
+    }
+
+    private ApiService.DashStream chooseAudioStream(ApiService.DashStream[] streams) {
+        if (streams == null || streams.length == 0) return null;
+        ApiService.DashStream best = null;
+        for (ApiService.DashStream stream : streams) {
+            if (getStreamUrl(stream) != null && (best == null || stream.bandwidth > best.bandwidth)) {
+                best = stream;
+            }
+        }
+        return best;
+    }
+
+    private String getStreamUrl(ApiService.DashStream stream) {
+        if (stream == null) return null;
+        if (stream.baseUrl != null && !stream.baseUrl.isEmpty()) return stream.baseUrl;
+        if (stream.base_url != null && !stream.base_url.isEmpty()) return stream.base_url;
+        return null;
+    }
+
+    private String[] getBackupUrls(ApiService.DashStream stream) {
+        if (stream == null) return null;
+        java.util.ArrayList<String> urls = new java.util.ArrayList<>();
+        if (stream.backupUrl != null) {
+            for (String url : stream.backupUrl) {
+                if (url != null && !url.isEmpty()) urls.add(url);
+            }
+        }
+        if (stream.backup_url != null) {
+            for (String url : stream.backup_url) {
+                if (url != null && !url.isEmpty() && !urls.contains(url)) urls.add(url);
+            }
+        }
+        return urls.toArray(new String[0]);
     }
 
     public void getComments(long aid, int page, CallbackImpl<List<com.bilibili.lite.data.model.CommentItem>> callback) {
@@ -152,6 +204,10 @@ public class VideoRepository {
     public static class PlayUrlResult {
         public String url;
         public String[] backupUrls;
+        public boolean isDash;
+        public String videoUrl;
+        public String audioUrl;
+        public String[] videoBackupUrls;
         public String[] acceptDesc;
         public int[] acceptQuality;
     }
