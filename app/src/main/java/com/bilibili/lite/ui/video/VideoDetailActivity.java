@@ -24,6 +24,7 @@ import com.bilibili.lite.R;
 import com.bilibili.lite.data.model.CommentItem;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.repository.VideoRepository;
+import com.bilibili.lite.util.Constants;
 import com.bilibili.lite.util.DarkThemeHelper;
 import com.bilibili.lite.util.DebugLogger;
 import com.bilibili.lite.util.ImageLoader;
@@ -32,6 +33,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -177,7 +179,11 @@ public class VideoDetailActivity extends AppCompatActivity {
         releasePlayer();
         mediaPlayer = new MediaPlayer();
         try {
-            mediaPlayer.setDataSource(this, Uri.parse(url));
+            // Bilibili CDN requires Referer and User-Agent headers
+            HashMap<String, String> headers = new HashMap<>();
+            headers.put("Referer", "https://www.bilibili.com");
+            headers.put("User-Agent", Constants.USER_AGENT);
+            mediaPlayer.setDataSource(this, Uri.parse(url), headers);
             mediaPlayer.setDisplay(surfaceView.getHolder());
             mediaPlayer.setOnPreparedListener(mp -> {
                 showLoading(false);
