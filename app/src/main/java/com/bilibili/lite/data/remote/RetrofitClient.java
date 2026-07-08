@@ -197,7 +197,7 @@ public class RetrofitClient {
             for (java.util.Map.Entry<String, java.util.List<Cookie>> entry : cookieStore.entrySet()) {
                 for (Cookie c : entry.getValue()) {
                     if (sb.length() > 0) sb.append("|");
-                    sb.append(entry.getKey()).append("@").append(c.name()).append("=").append(c.value);
+                    sb.append(entry.getKey()).append("@").append(c.name()).append("=").append(c.value());
                 }
             }
             appContext.getSharedPreferences("cookies", 0)
