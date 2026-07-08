@@ -75,9 +75,6 @@ dependencies {
     // JSON
     implementation "com.google.code.gson:gson:2.8.9"
 
-    // Video Player
-    implementation "tv.danmaku.ijk.media:ijkplayer-java:0.7.9.1"
-    arm8Implementation "tv.danmaku.ijk.media:ijkplayer-armv7a:0.7.9.1"
-    arm8Implementation "tv.danmaku.ijk.media:ijkplayer-arm64:0.7.9.1"
-    arm7Implementation "tv.danmaku.ijk.media:ijkplayer-armv7a:0.7.9.1"
+    // Video Player (using Android built-in MediaPlayer, API 1+)
+    // ijkplayer can replace MediaPlayer when a working Maven repo is available
 }
