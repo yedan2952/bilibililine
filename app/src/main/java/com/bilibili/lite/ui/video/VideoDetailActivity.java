@@ -458,6 +458,11 @@ public class VideoDetailActivity extends AppCompatActivity {
         }
 
         @Override
+        public void addTransferListener(TransferListener transferListener) {
+            // No-op: we don't track transfer events
+        }
+
+        @Override
         public long open(DataSpec dataSpec) throws java.io.IOException {
             okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
                     .url(url)
