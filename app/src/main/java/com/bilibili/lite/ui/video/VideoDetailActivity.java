@@ -148,7 +148,6 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         repo.getPlayUrl(bvid, cid, qn, new VideoRepository.CallbackImpl<VideoRepository.PlayUrlResult>() {
             @Override public void onSuccess(VideoRepository.PlayUrlResult r) {
-                videoUrl = r.url;
                 acceptQuality = r.acceptQuality;
                 acceptDesc = r.acceptDesc;
                 initPlayer(r.url);
