@@ -4,11 +4,11 @@ import com.bilibili.lite.data.model.UserInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
 import com.bilibili.lite.util.DebugLogger;
-import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.json.JSONObject;
+import retrofit2.Call;
 import retrofit2.Callback;
 
 public class UserRepository {
@@ -53,11 +53,11 @@ public class UserRepository {
                 .header("Referer", "https://www.bilibili.com")
                 .build();
         okHttp.newCall(request).enqueue(new okhttp3.Callback() {
-            @Override public void onFailure(Call call, java.io.IOException e) {
+            @Override public void onFailure(okhttp3.Call call, java.io.IOException e) {
                 DebugLogger.e("UserRepo", "generateQrCode failed", e);
                 callback.onError(e.getMessage());
             }
-            @Override public void onResponse(Call call, Response resp) {
+            @Override public void onResponse(okhttp3.Call call, Response resp) {
                 try {
                     String body = resp.body() != null ? resp.body().string() : "";
                     JSONObject json = new JSONObject(body);
@@ -79,11 +79,11 @@ public class UserRepository {
                 .header("Referer", "https://www.bilibili.com")
                 .build();
         okHttp.newCall(request).enqueue(new okhttp3.Callback() {
-            @Override public void onFailure(Call call, java.io.IOException e) {
+            @Override public void onFailure(okhttp3.Call call, java.io.IOException e) {
                 DebugLogger.e("UserRepo", "pollQrLogin failed", e);
                 callback.onError(e.getMessage());
             }
-            @Override public void onResponse(Call call, Response resp) {
+            @Override public void onResponse(okhttp3.Call call, Response resp) {
                 try {
                     String body = resp.body() != null ? resp.body().string() : "";
                     JSONObject json = new JSONObject(body);
