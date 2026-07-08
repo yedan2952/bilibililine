@@ -6,10 +6,21 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * WBI签名工具。
+ *
+ * 注意：refreshKey() 内部使用同步网络请求 (execute())，
+ * 必须确保在后台线程调用。sign() 方法会自动在后台刷新密钥，
+ * 调用方无需关心线程问题。
+ */
 public class WbiSigner {
 
     private static String mixinKey = "";
     private static long lastFetch = 0;
+    private static volatile boolean isRefreshing = false;
+    private static final Object KEY_LOCK = new Object();
+
+    private static final long KEY_EXPIRY_MS = 86400000L; // 24 hours
 
     private static final int[] MIXIN_KEY_ENC_TAB = {
             46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
@@ -18,7 +29,28 @@ public class WbiSigner {
             22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52
     };
 
+    /**
+     * Pre-warm the WBI key on app startup (call from background thread).
+     */
+    public static void init() {
+        if (mixinKey.isEmpty()) {
+            new Thread(() -> refreshKey()).start();
+        }
+    }
+
+    /**
+     * Refresh the WBI signing key.
+     * WARNING: Uses synchronous execute() — must be called from a background thread.
+     */
     public static void refreshKey() {
+        synchronized (KEY_LOCK) {
+            if (isRefreshing) {
+                DebugLogger.d("WbiSigner", "Key refresh already in progress, skipping");
+                return;
+            }
+            isRefreshing = true;
+        }
+
         try {
             okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
                     .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
@@ -64,22 +96,43 @@ public class WbiSigner {
                     lastFetch = System.currentTimeMillis();
                     DebugLogger.i("WbiSigner", "Key refreshed, mixinKey=" + mixinKey);
                 } else {
-                    DebugLogger.w("WbiSigner", "No wbi_img in nav response - using cached key");
+                    DebugLogger.w("WbiSigner", "No wbi_img in nav response");
                 }
             } else {
-                DebugLogger.w("WbiSigner", "Invalid nav response - using cached key");
+                DebugLogger.w("WbiSigner", "Invalid nav response");
             }
         } catch (Exception e) {
             DebugLogger.e("WbiSigner", "Failed to refresh key", e);
+        } finally {
+            isRefreshing = false;
         }
     }
 
+    /**
+     * Sign parameters with WBI signature.
+     * If the key is not yet loaded, triggers an async background refresh
+     * and returns the params unsigned (best-effort). The next call will
+     * have the key ready.
+     */
     public static Map<String, String> sign(Map<String, String> params) {
-        if (mixinKey.isEmpty() || System.currentTimeMillis() - lastFetch > 86400000) {
-            refreshKey();
+        // ── Key is empty: trigger async refresh, return unsigned ──
+        if (mixinKey.isEmpty()) {
+            if (!isRefreshing) {
+                new Thread(() -> refreshKey()).start();
+            }
+            // Return params unsigned — the API may still work without WBI
+            // on some endpoints, or the key might arrive before the request
+            // completes (race with enqueue).
+            DebugLogger.w("WbiSigner", "Key not ready, returning unsigned params");
+            return params;
         }
-        if (mixinKey.isEmpty()) return params;
 
+        // ── Key is expired: refresh in background, keep using current key ──
+        if (System.currentTimeMillis() - lastFetch > KEY_EXPIRY_MS && !isRefreshing) {
+            new Thread(() -> refreshKey()).start();
+        }
+
+        // ── Sign with current key ──
         long wts = System.currentTimeMillis() / 1000;
         params.put("wts", String.valueOf(wts));
 

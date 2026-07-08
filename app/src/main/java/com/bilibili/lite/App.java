@@ -2,6 +2,7 @@ package com.bilibili.lite;
 
 import android.app.Application;
 import com.bilibili.lite.data.remote.RetrofitClient;
+import com.bilibili.lite.data.remote.WbiSigner;
 import com.bilibili.lite.util.DebugLogger;
 import com.bilibili.lite.util.ImageLoader;
 import java.io.PrintWriter;
@@ -14,6 +15,7 @@ public class App extends Application {
         super.onCreate();
         ImageLoader.init(this);
         RetrofitClient.init(this);
+        WbiSigner.init();
         DebugLogger.init(getCacheDir());
         Thread.setDefaultUncaughtExceptionHandler((thread, ex) -> {
             StringWriter sw = new StringWriter();
