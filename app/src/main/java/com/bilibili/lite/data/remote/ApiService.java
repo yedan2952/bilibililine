@@ -1,6 +1,7 @@
 package com.bilibili.lite.data.remote;
 
 import com.bilibili.lite.data.model.CommentItem;
+import com.bilibili.lite.data.model.UserInfo;
 import com.bilibili.lite.data.model.VideoInfo;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,9 @@ import retrofit2.http.GET;
 import retrofit2.http.QueryMap;
 
 public interface ApiService {
+
+    String BASE_URL = "https://api.bilibili.com/";
+    String PASSPORT_URL = "https://passport.bilibili.com/";
 
     @GET("x/web-interface/view")
     Call<BiliResponse<VideoInfo>> getVideoInfo(@QueryMap Map<String, String> params);
@@ -25,10 +29,37 @@ public interface ApiService {
     @GET("x/player/playurl")
     Call<BiliResponse<PlayUrlData>> getPlayUrl(@QueryMap Map<String, String> params);
 
+    @GET("x/web-interface/nav")
+    Call<BiliResponse<UserInfo>> getNavInfo();
+
     class BiliResponse<T> {
         public int code;
         public String message;
         public T data;
+    }
+
+    class QrCodeResponse {
+        public int code;
+        public String message;
+        public QrCodeData data;
+    }
+
+    class QrCodeData {
+        public String url;
+        public String qrcode_key;
+    }
+
+    class QrPollResponse {
+        public int code;
+        public String message;
+        public QrPollData data;
+    }
+
+    class QrPollData {
+        public String url;
+        public int refresh_token;
+        public long timestamp;
+        public int code;
     }
 
     class PopularResult {
@@ -61,5 +92,14 @@ public interface ApiService {
         public long size;
         public String url;
         public String[] backup_url;
+    }
+
+    class WbiKey {
+        public WbiKeyData data;
+    }
+
+    class WbiKeyData {
+        public String img_key;
+        public String sub_key;
     }
 }

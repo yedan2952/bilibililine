@@ -11,12 +11,13 @@ public class RetrofitClient {
     private static final String BASE_URL = "https://api.bilibili.com/";
     private static RetrofitClient instance;
     private final ApiService apiService;
+    private final OkHttpClient okHttpClient;
 
     private RetrofitClient() {
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
 
-        OkHttpClient client = new OkHttpClient.Builder()
+        okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(logging)
                 .addInterceptor(chain -> chain.proceed(
                         chain.request().newBuilder()
@@ -28,7 +29,7 @@ public class RetrofitClient {
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
-                .client(client)
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
@@ -44,5 +45,9 @@ public class RetrofitClient {
 
     public ApiService getApiService() {
         return apiService;
+    }
+
+    public OkHttpClient getOkHttpClient() {
+        return okHttpClient;
     }
 }
