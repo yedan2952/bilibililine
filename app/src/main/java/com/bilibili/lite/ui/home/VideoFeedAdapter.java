@@ -16,6 +16,15 @@ import java.util.List;
 public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedAdapter.ViewHolder> {
 
     private final List<VideoInfo> list = new ArrayList<>();
+    private final OnVideoClickListener listener;
+
+    public interface OnVideoClickListener {
+        void onVideoClick(VideoInfo video);
+    }
+
+    public VideoFeedAdapter(OnVideoClickListener listener) {
+        this.listener = listener;
+    }
 
     public void submitList(List<VideoInfo> videos) {
         list.clear();
@@ -37,23 +46,20 @@ public class VideoFeedAdapter extends RecyclerView.Adapter<VideoFeedAdapter.View
         holder.title.setText(video.getTitle());
         holder.author.setText(video.getOwnerName());
         holder.playCount.setText(formatCount(video.getPlayCount()));
+        holder.itemView.setOnClickListener(v -> listener.onVideoClick(video));
     }
 
     @Override
-    public int getItemCount() {
-        return list.size();
-    }
+    public int getItemCount() { return list.size(); }
 
     private String formatCount(long count) {
-        if (count >= 10000) return (count / 10000) + "万";
+        if (count >= 10000) return (count / 10000) + "\u4e07";
         return String.valueOf(count);
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView cover;
-        TextView title;
-        TextView author;
-        TextView playCount;
+        TextView title, author, playCount;
 
         ViewHolder(View itemView) {
             super(itemView);

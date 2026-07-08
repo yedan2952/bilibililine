@@ -1,16 +1,17 @@
 package com.bilibili.lite.data.remote;
 
+import com.bilibili.lite.data.model.CommentItem;
 import com.bilibili.lite.data.model.VideoInfo;
+import java.util.List;
 import java.util.Map;
 import retrofit2.Call;
 import retrofit2.http.GET;
-import retrofit2.http.Query;
 import retrofit2.http.QueryMap;
 
 public interface ApiService {
 
     @GET("x/web-interface/view")
-    Call<BiliResponse<VideoInfo>> getVideoInfo(@Query("bvid") String bvid);
+    Call<BiliResponse<VideoInfo>> getVideoInfo(@QueryMap Map<String, String> params);
 
     @GET("x/web-interface/popular")
     Call<BiliResponse<PopularResult>> getPopular();
@@ -28,16 +29,16 @@ public interface ApiService {
     }
 
     class PopularResult {
-        public java.util.List<VideoInfo> list;
+        public List<VideoInfo> list;
     }
 
     class SearchResultData {
-        public java.util.List<VideoInfo> result;
+        public List<VideoInfo> result;
     }
 
     class CommentResult {
         public CommentCursor cursor;
-        public java.util.List<com.bilibili.lite.data.model.CommentItem> replies;
+        public List<CommentItem> replies;
     }
 
     class CommentCursor {

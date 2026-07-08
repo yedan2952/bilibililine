@@ -12,18 +12,16 @@ public class HomeViewModel extends ViewModel {
     private final VideoRepository repository = VideoRepository.getInstance();
     private final MutableLiveData<List<VideoInfo>> videos = new MutableLiveData<>();
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>();
+    private final MutableLiveData<String> error = new MutableLiveData<>();
 
-    public LiveData<List<VideoInfo>> getVideos() {
-        return videos;
-    }
-
-    public LiveData<Boolean> isLoading() {
-        return loading;
-    }
+    public LiveData<List<VideoInfo>> getVideos() { return videos; }
+    public LiveData<Boolean> isLoading() { return loading; }
+    public LiveData<String> getError() { return error; }
 
     public void loadPopular() {
         loading.setValue(true);
-        repository.fetchPopular(new VideoRepository.Callback<List<VideoInfo>>() {
+        error.setValue(null);
+        repository.fetchPopular(new VideoRepository.CallbackImpl<List<VideoInfo>>() {
             @Override
             public void onSuccess(List<VideoInfo> result) {
                 videos.setValue(result);
@@ -31,7 +29,8 @@ public class HomeViewModel extends ViewModel {
             }
 
             @Override
-            public void onError(String error) {
+            public void onError(String err) {
+                error.setValue(err);
                 loading.setValue(false);
             }
         });

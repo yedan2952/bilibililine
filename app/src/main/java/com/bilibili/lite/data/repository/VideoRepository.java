@@ -3,7 +3,6 @@ package com.bilibili.lite.data.repository;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
-import java.util.Collections;
 import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -19,21 +18,20 @@ public class VideoRepository {
     }
 
     public static synchronized VideoRepository getInstance() {
-        if (instance == null) {
-            instance = new VideoRepository();
-        }
+        if (instance == null) instance = new VideoRepository();
         return instance;
     }
 
-    public void fetchPopular(Callback<List<VideoInfo>> callback) {
-        api.getPopular().enqueue(new retrofit2.Callback<ApiService.BiliResponse<ApiService.PopularResult>>() {
+    public void fetchPopular(CallbackImpl callback) {
+        api.getPopular().enqueue(new Callback<ApiService.BiliResponse<ApiService.PopularResult>>() {
             @Override
             public void onResponse(Call<ApiService.BiliResponse<ApiService.PopularResult>> call,
                                    Response<ApiService.BiliResponse<ApiService.PopularResult>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().data != null) {
                     callback.onSuccess(response.body().data.list);
                 } else {
-                    callback.onError("empty response");
+                    int code = response.body() != null ? response.body().code : -1;
+                    callback.onError("API error: code=" + code);
                 }
             }
 
@@ -44,7 +42,28 @@ public class VideoRepository {
         });
     }
 
-    public interface Callback<T> {
+    public void getVideoDetail(String bvid, CallbackImpl<VideoInfo> callback) {
+        api.getVideoInfo(new java.util.HashMap<String, String>() {{
+            put("bvid", bvid);
+        }}).enqueue(new Callback<ApiService.BiliResponse<VideoInfo>>() {
+            @Override
+            public void onResponse(Call<ApiService.BiliResponse<VideoInfo>> call,
+                                   Response<ApiService.BiliResponse<VideoInfo>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
+                    callback.onSuccess(response.body().data);
+                } else {
+                    callback.onError("Video detail error");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiService.BiliResponse<VideoInfo>> call, Throwable t) {
+                callback.onError(t.getMessage());
+            }
+        });
+    }
+
+    public interface CallbackImpl<T> {
         void onSuccess(T result);
         void onError(String error);
     }
