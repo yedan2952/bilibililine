@@ -1,12 +1,14 @@
 package com.bilibili.lite.ui.search;
 
+import android.app.Application;
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
 import com.bilibili.lite.data.remote.WbiSigner;
+import com.bilibili.lite.util.NetworkUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +17,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class SearchViewModel extends ViewModel {
+public class SearchViewModel extends AndroidViewModel {
 
     private final ApiService api = RetrofitClient.getInstance().getApiService();
     private final MutableLiveData<List<VideoInfo>> results = new MutableLiveData<>(new ArrayList<>());
@@ -24,11 +26,17 @@ public class SearchViewModel extends ViewModel {
     private int page = 1;
     private String currentQuery;
 
+    public SearchViewModel(Application app) { super(app); }
+
     public LiveData<List<VideoInfo>> getResults() { return results; }
     public LiveData<Boolean> isLoading() { return loading; }
     public LiveData<String> getError() { return error; }
 
     public void search(String query) {
+        if (!NetworkUtil.isNetworkAvailable(getApplication())) {
+            error.setValue("无网络连接，请检查网络设置");
+            return;
+        }
         currentQuery = query;
         page = 1;
         results.setValue(new ArrayList<>());
@@ -64,7 +72,7 @@ public class SearchViewModel extends ViewModel {
             @Override
             public void onFailure(Call<ApiService.BiliResponse<ApiService.SearchResultData>> call, Throwable t) {
                 loading.setValue(false);
-                error.setValue(t.getMessage());
+                error.setValue(NetworkUtil.getNetworkErrorMessage(t, getApplication()));
             }
         });
     }

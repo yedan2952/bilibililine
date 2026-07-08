@@ -4,7 +4,6 @@ import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.SurfaceHolder;
@@ -20,7 +19,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
-import com.bilibili.lite.R;
 import com.bilibili.lite.data.model.CommentItem;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.repository.VideoRepository;
@@ -39,7 +37,7 @@ import java.util.Set;
 public class VideoDetailActivity extends AppCompatActivity {
 
     private VideoDetailViewModel viewModel;
-    private VideoRepository repo = VideoRepository.getInstance();
+    private final VideoRepository repo = VideoRepository.getInstance();
 
     private TextView tvTitle, tvAuthor, tvStats, tvCurrentTime, tvTotalTime;
     private ImageView ivCover, btnPlayPause, btnFullscreen, btnSpeed, btnQuality;
@@ -59,6 +57,8 @@ public class VideoDetailActivity extends AppCompatActivity {
     private float currentSpeed = 1.0f;
     private int[] acceptQuality;
     private String[] acceptDesc;
+    private String[] backupUrls;
+    private int currentUrlIndex = 0;
 
     private SharedPreferences prefs;
     private Set<String> favorites;
@@ -153,12 +153,20 @@ public class VideoDetailActivity extends AppCompatActivity {
                 DebugLogger.i("VideoDetail", "Got play URL, qn=" + qn + " url=" + (r.url != null ? r.url.substring(0, Math.min(80, r.url.length())) : "null"));
                 acceptQuality = r.acceptQuality;
                 acceptDesc = r.acceptDesc;
+                backupUrls = r.backupUrls;
+                currentUrlIndex = 0;
                 initPlayer(r.url);
             }
             @Override public void onError(String e) {
                 showLoading(false);
                 DebugLogger.e("VideoDetail", "Play URL error: " + e);
-                Toast.makeText(VideoDetailActivity.this, e, Toast.LENGTH_SHORT).show();
+                String msg = e;
+                if (msg != null && msg.contains("Unable to resolve host")) {
+                    msg = "网络连接失败，请检查网络设置或切换网络后重试";
+                } else if (msg != null && msg.contains("timeout") || (msg != null && msg.contains("Timeout"))) {
+                    msg = "连接超时，请检查网络后重试";
+                }
+                Toast.makeText(VideoDetailActivity.this, msg, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -183,8 +191,26 @@ public class VideoDetailActivity extends AppCompatActivity {
             });
             mediaPlayer.setOnErrorListener((mp, w, e) -> {
                 showLoading(false);
-                DebugLogger.e("VideoDetail", "MediaPlayer error what=" + w + " extra=" + e);
-                Toast.makeText(this, "Playback error (" + w + ")", Toast.LENGTH_LONG).show();
+                DebugLogger.e("VideoDetail", "MediaPlayer error what=" + w + " extra=" + e + " urlIndex=" + currentUrlIndex);
+                // Try backup URLs if available
+                if (currentUrlIndex < (backupUrls != null ? backupUrls.length : 0) - 1) {
+                    currentUrlIndex++;
+                    String fallbackUrl = backupUrls[currentUrlIndex];
+                    DebugLogger.i("VideoDetail", "Trying backup URL #" + currentUrlIndex + ": " + fallbackUrl.substring(0, Math.min(80, fallbackUrl.length())));
+                    Toast.makeText(VideoDetailActivity.this, "正在切换到备用线路...", Toast.LENGTH_SHORT).show();
+                    showLoading(true);
+                    initPlayer(fallbackUrl);
+                } else {
+                    String errorMsg;
+                    if (w == MediaPlayer.MEDIA_ERROR_IO) {
+                        errorMsg = "视频流加载失败，请尝试切换画质或稍后重试";
+                    } else if (w == MediaPlayer.MEDIA_ERROR_TIMED_OUT) {
+                        errorMsg = "视频播放超时，请检查网络后重试";
+                    } else {
+                        errorMsg = "视频播放出错 (" + w + ")，请稍后重试";
+                    }
+                    Toast.makeText(VideoDetailActivity.this, errorMsg, Toast.LENGTH_LONG).show();
+                }
                 return true;
             });
             mediaPlayer.setOnCompletionListener(mp -> {
@@ -195,7 +221,14 @@ public class VideoDetailActivity extends AppCompatActivity {
             mediaPlayer.prepareAsync();
         } catch (IOException e) {
             showLoading(false);
-            Toast.makeText(this, "Failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            // Try fallback if the primary URL is invalid
+            if (backupUrls != null && backupUrls.length > 0 && currentUrlIndex < backupUrls.length - 1) {
+                currentUrlIndex++;
+                DebugLogger.i("VideoDetail", "Primary URL failed, trying backup #" + currentUrlIndex);
+                initPlayer(backupUrls[currentUrlIndex]);
+            } else {
+                Toast.makeText(this, "无法播放视频: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -306,7 +339,7 @@ public class VideoDetailActivity extends AppCompatActivity {
                 .putExtra("author", v.getOwnerName()));
     }
 
-    private Runnable updateProgress = () -> {
+    private final Runnable updateProgress = () -> {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             seekBar.setProgress(mediaPlayer.getCurrentPosition());
             tvCurrentTime.setText(formatTime(mediaPlayer.getCurrentPosition()));
@@ -358,7 +391,7 @@ public class VideoDetailActivity extends AppCompatActivity {
         playerControls.setVisibility(View.GONE);
     }
 
-    private Runnable hideControlsTask = this::hideControls;
+    private final Runnable hideControlsTask = this::hideControls;
 
     private void showLoading(boolean show) {
         loadingIndicator.setVisibility(show ? View.VISIBLE : View.GONE);

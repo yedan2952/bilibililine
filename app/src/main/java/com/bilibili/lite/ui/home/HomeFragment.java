@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.bilibili.lite.R;
-import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.ui.video.VideoDetailActivity;
 
 public class HomeFragment extends Fragment {

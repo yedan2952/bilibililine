@@ -21,29 +21,54 @@ public class WbiSigner {
     public static void refreshKey() {
         try {
             okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .dns(hostname -> {
+                        int attempts = 0;
+                        while (attempts < 3) {
+                            try {
+                                return java.util.Arrays.asList(java.net.InetAddress.getAllByName(hostname));
+                            } catch (java.net.UnknownHostException e) {
+                                attempts++;
+                                if (attempts >= 3) throw e;
+                                try { Thread.sleep(1000 * attempts); } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    throw e;
+                                }
+                            }
+                        }
+                        throw new java.net.UnknownHostException("Unable to resolve " + hostname);
+                    })
                     .build();
             okhttp3.Request request = new okhttp3.Request.Builder()
                     .url("https://api.bilibili.com/x/web-interface/nav")
-                    .header("User-Agent", "Mozilla/5.0")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
                     .build();
             okhttp3.Response response = client.newCall(request).execute();
             String body = response.body() != null ? response.body().string() : "";
             org.json.JSONObject json = new org.json.JSONObject(body);
-            org.json.JSONObject wbi = json.getJSONObject("data").getJSONObject("wbi_img");
-            String imgUrl = wbi.getString("img_url");
-            String subUrl = wbi.getString("sub_url");
-            String imgKey = imgUrl.substring(imgUrl.lastIndexOf('/') + 1, imgUrl.lastIndexOf('.'));
-            String subKey = subUrl.substring(subUrl.lastIndexOf('/') + 1, subUrl.lastIndexOf('.'));
-            String raw = imgKey + subKey;
-            StringBuilder sb = new StringBuilder(32);
-            for (int i = 0; i < 32; i++) {
-                sb.append(raw.charAt(MIXIN_KEY_ENC_TAB[i]));
+            if (json.has("data") && !json.isNull("data")) {
+                org.json.JSONObject data = json.getJSONObject("data");
+                if (data.has("wbi_img") && !data.isNull("wbi_img")) {
+                    org.json.JSONObject wbi = data.getJSONObject("wbi_img");
+                    String imgUrl = wbi.getString("img_url");
+                    String subUrl = wbi.getString("sub_url");
+                    String imgKey = imgUrl.substring(imgUrl.lastIndexOf('/') + 1, imgUrl.lastIndexOf('.'));
+                    String subKey = subUrl.substring(subUrl.lastIndexOf('/') + 1, subUrl.lastIndexOf('.'));
+                    String raw = imgKey + subKey;
+                    StringBuilder sb = new StringBuilder(32);
+                    for (int i = 0; i < 32; i++) {
+                        sb.append(raw.charAt(MIXIN_KEY_ENC_TAB[i]));
+                    }
+                    mixinKey = sb.toString();
+                    lastFetch = System.currentTimeMillis();
+                    DebugLogger.i("WbiSigner", "Key refreshed, mixinKey=" + mixinKey);
+                } else {
+                    DebugLogger.w("WbiSigner", "No wbi_img in nav response - using cached key");
+                }
+            } else {
+                DebugLogger.w("WbiSigner", "Invalid nav response - using cached key");
             }
-            mixinKey = sb.toString();
-            lastFetch = System.currentTimeMillis();
-            DebugLogger.i("WbiSigner", "Key refreshed, mixinKey=" + mixinKey);
         } catch (Exception e) {
             DebugLogger.e("WbiSigner", "Failed to refresh key", e);
         }
@@ -74,7 +99,7 @@ public class WbiSigner {
     private static String encode(String s) {
         StringBuilder sb = new StringBuilder();
         byte[] bytes;
-        try { bytes = s.getBytes("UTF-8"); } catch (Exception e) { return s; }
+        try { bytes = s.getBytes("UTF-8"); } catch (java.io.UnsupportedEncodingException e) { return s; }
         for (byte b : bytes) {
             int c = b & 0xFF;
             if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')

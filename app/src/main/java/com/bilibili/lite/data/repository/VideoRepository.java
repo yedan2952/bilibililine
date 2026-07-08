@@ -7,7 +7,6 @@ import com.bilibili.lite.data.remote.WbiSigner;
 import com.bilibili.lite.util.DebugLogger;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -72,13 +71,37 @@ public class VideoRepository {
                                              Response<ApiService.BiliResponse<ApiService.PlayUrlData>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().data != null) {
                     PlayUrlResult r = new PlayUrlResult();
-                    r.url = response.body().data.durl != null && response.body().data.durl.length > 0
-                            ? response.body().data.durl[0].url : null;
-                    r.acceptDesc = response.body().data.accept_description;
-                    r.acceptQuality = response.body().data.accept_quality;
+                    ApiService.PlayUrlData data = response.body().data;
+                    if (data.durl != null && data.durl.length > 0) {
+                        r.url = data.durl[0].url;
+                        // Collect all available backup URLs for fallback
+                        java.util.ArrayList<String> backups = new java.util.ArrayList<>();
+                        if (data.durl[0].backup_url != null) {
+                            for (String bu : data.durl[0].backup_url) {
+                                if (bu != null && !bu.isEmpty()) backups.add(bu);
+                            }
+                        }
+                        // Add other durl entries as additional backups
+                        for (int i = 1; i < data.durl.length; i++) {
+                            if (data.durl[i].url != null && !data.durl[i].url.isEmpty()) {
+                                backups.add(data.durl[i].url);
+                            }
+                        }
+                        r.backupUrls = backups.toArray(new String[0]);
+                    }
+                    // Try DASH format if durl is not available
+                    if (r.url == null && data.dash != null) {
+                        if (data.dash.video != null && data.dash.video.length > 0) {
+                            String base = data.dash.video[0].baseUrl;
+                            if (base == null) base = data.dash.video[0].base_url;
+                            if (base != null) r.url = base;
+                        }
+                    }
+                    r.acceptDesc = data.accept_description;
+                    r.acceptQuality = data.accept_quality;
                     if (r.url != null) callback.onSuccess(r);
-                    else callback.onError("No playable URL");
-                } else callback.onError("No playable URL");
+                    else callback.onError("No playable URL in response");
+                } else callback.onError("API error: " + (response.body() != null ? response.body().message : "unknown"));
             }
             @Override public void onFailure(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call, Throwable t) {
                 DebugLogger.e("VideoRepo", "getPlayUrl failed bvid=" + bvid + " cid=" + cid + " qn=" + qn, t);
@@ -125,6 +148,7 @@ public class VideoRepository {
 
     public static class PlayUrlResult {
         public String url;
+        public String[] backupUrls;
         public String[] acceptDesc;
         public int[] acceptQuality;
     }
