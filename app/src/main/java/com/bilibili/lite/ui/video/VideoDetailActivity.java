@@ -174,7 +174,9 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         ivCover.setVisibility(View.GONE);
 
-        // Build data source factory with Referer header (required by Bilibili CDN)
+        // Build data source factory with headers required by Bilibili CDN
+        okhttp3.OkHttpClient ok = com.bilibili.lite.data.remote.RetrofitClient.getInstance()
+                .getOkHttpClient();
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setUserAgent(Constants.USER_AGENT)
                 .setAllowCrossProtocolRedirects(true)
@@ -182,6 +184,19 @@ public class VideoDetailActivity extends AppCompatActivity {
                 .setReadTimeoutMs(30000);
         java.util.HashMap<String, String> defaultHeaders = new java.util.HashMap<>();
         defaultHeaders.put("Referer", "https://www.bilibili.com");
+        // Share cookies from OkHttpClient with ExoPlayer via Cookie header
+        okhttp3.HttpUrl httpUrl = okhttp3.HttpUrl.parse(url);
+        if (httpUrl != null) {
+            java.util.List<okhttp3.Cookie> cookies = ok.cookieJar().loadForRequest(httpUrl);
+            if (!cookies.isEmpty()) {
+                StringBuilder cookieStr = new StringBuilder();
+                for (okhttp3.Cookie c : cookies) {
+                    if (cookieStr.length() > 0) cookieStr.append("; ");
+                    cookieStr.append(c.name()).append("=").append(c.value());
+                }
+                defaultHeaders.put("Cookie", cookieStr.toString());
+            }
+        }
         dataSourceFactory.setDefaultRequestProperties(defaultHeaders);
 
         // Create media source
