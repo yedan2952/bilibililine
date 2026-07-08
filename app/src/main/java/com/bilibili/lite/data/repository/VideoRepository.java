@@ -3,6 +3,7 @@ package com.bilibili.lite.data.repository;
 import com.bilibili.lite.data.model.VideoInfo;
 import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
+import com.bilibili.lite.data.remote.WbiSigner;
 import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -68,10 +69,11 @@ public class VideoRepository {
         params.put("bvid", bvid);
         params.put("cid", String.valueOf(cid));
         params.put("qn", "32");
-        params.put("platform", "android");
+        params.put("fnval", "1");
+        params.put("fnver", "0");
+        params.put("fourk", "1");
         params.put("otype", "json");
-        params.put("high_quality", "1");
-        api.getPlayUrl(params).enqueue(new Callback<ApiService.BiliResponse<ApiService.PlayUrlData>>() {
+        api.getPlayUrl(WbiSigner.sign(params)).enqueue(new Callback<ApiService.BiliResponse<ApiService.PlayUrlData>>() {
             @Override
             public void onResponse(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call,
                                    Response<ApiService.BiliResponse<ApiService.PlayUrlData>> response) {

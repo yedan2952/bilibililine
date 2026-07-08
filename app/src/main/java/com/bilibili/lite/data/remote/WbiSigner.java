@@ -1,27 +1,90 @@
 package com.bilibili.lite.data.remote;
 
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
 public class WbiSigner {
 
-    private static final String MIXIN_KEY_EMPTY = "ea1db124afe347a1";
+    private static String mixinKey = "";
+    private static long lastFetch = 0;
+
+    private static final int[] MIXIN_KEY_ENC_TAB = {
+            46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
+            27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
+            37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4,
+            22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52
+    };
+
+    public static void refreshKey() {
+        try {
+            okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .build();
+            okhttp3.Request request = new okhttp3.Request.Builder()
+                    .url("https://api.bilibili.com/x/web-interface/nav")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .build();
+            okhttp3.Response response = client.newCall(request).execute();
+            String body = response.body() != null ? response.body().string() : "";
+            org.json.JSONObject json = new org.json.JSONObject(body);
+            org.json.JSONObject wbi = json.getJSONObject("data").getJSONObject("wbi_img");
+            String imgUrl = wbi.getString("img_url");
+            String subUrl = wbi.getString("sub_url");
+            String imgKey = imgUrl.substring(imgUrl.lastIndexOf('/') + 1, imgUrl.lastIndexOf('.'));
+            String subKey = subUrl.substring(subUrl.lastIndexOf('/') + 1, subUrl.lastIndexOf('.'));
+            String raw = imgKey + subKey;
+            StringBuilder sb = new StringBuilder(32);
+            for (int i = 0; i < 32; i++) {
+                sb.append(raw.charAt(MIXIN_KEY_ENC_TAB[i]));
+            }
+            mixinKey = sb.toString();
+            lastFetch = System.currentTimeMillis();
+        } catch (Exception ignored) {
+        }
+    }
 
     public static Map<String, String> sign(Map<String, String> params) {
-        TreeMap<String, String> sorted = new TreeMap<>(params);
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> e : sorted.entrySet()) {
-            sb.append(e.getKey()).append("=").append(e.getValue()).append("&");
+        if (mixinKey.isEmpty() || System.currentTimeMillis() - lastFetch > 86400000) {
+            refreshKey();
         }
-        sb.deleteCharAt(sb.length() - 1);
-        sb.append(MIXIN_KEY_EMPTY);
-        String wts = String.valueOf(System.currentTimeMillis() / 1000);
-        sorted.put("wts", wts);
-        sorted.put("w_rid", md5(sb.toString()));
-        return sorted;
+        if (mixinKey.isEmpty()) return params;
+
+        long wts = System.currentTimeMillis() / 1000;
+        params.put("wts", String.valueOf(wts));
+
+        TreeMap<String, String> sorted = new TreeMap<>(params);
+        StringBuilder query = new StringBuilder();
+        for (Map.Entry<String, String> e : sorted.entrySet()) {
+            if (query.length() > 0) query.append("&");
+            String value = e.getValue().replaceAll("[!'()*]", "");
+            query.append(encode(e.getKey())).append("=").append(encode(value));
+        }
+
+        String wRid = md5(query.toString() + mixinKey);
+        params.put("w_rid", wRid);
+        return params;
+    }
+
+    private static String encode(String s) {
+        StringBuilder sb = new StringBuilder();
+        byte[] bytes;
+        try { bytes = s.getBytes("UTF-8"); } catch (Exception e) { return s; }
+        for (byte b : bytes) {
+            int c = b & 0xFF;
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '-' || c == '_' || c == '.' || c == '~') {
+                sb.append((char) c);
+            } else if (c == ' ') {
+                sb.append("%20");
+            } else {
+                sb.append('%').append(String.format("%02X", c));
+            }
+        }
+        return sb.toString();
     }
 
     private static String md5(String input) {
