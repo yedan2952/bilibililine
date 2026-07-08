@@ -1,0 +1,3 @@
+-keep class com.bilibili.lite.data.model.** { *; }
+-keep class tv.danmaku.ijk.media.** { *; }
+-dontwarn tv.danmaku.ijk.media.**
