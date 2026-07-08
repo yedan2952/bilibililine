@@ -1,8 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Widget.BiliLite.VideoCard" parent="Widget.AppCompat.CardView">
-        <item name="cardCornerRadius">6dp</item>
-        <item name="cardElevation">2dp</item>
-        <item name="contentPadding">0dp</item>
-    </style>
 </resources>
