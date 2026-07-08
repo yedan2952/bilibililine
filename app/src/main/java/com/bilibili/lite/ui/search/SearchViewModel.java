@@ -8,6 +8,7 @@ import com.bilibili.lite.data.remote.ApiService;
 import com.bilibili.lite.data.remote.RetrofitClient;
 import com.bilibili.lite.data.remote.WbiSigner;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import retrofit2.Call;
@@ -42,11 +43,11 @@ public class SearchViewModel extends ViewModel {
     private void executeSearch() {
         if (currentQuery == null || currentQuery.isEmpty()) return;
         loading.setValue(true);
-        Map<String, String> params = WbiSigner.sign(new java.util.HashMap<String, String>() {{
-            put("keyword", currentQuery);
-            put("search_type", "video");
-            put("page", String.valueOf(page));
-        }));
+        HashMap<String, String> raw = new HashMap<>();
+        raw.put("keyword", currentQuery);
+        raw.put("search_type", "video");
+        raw.put("page", String.valueOf(page));
+        Map<String, String> params = WbiSigner.sign(raw);
         api.search(params).enqueue(new Callback<ApiService.BiliResponse<ApiService.SearchResultData>>() {
             @Override
             public void onResponse(Call<ApiService.BiliResponse<ApiService.SearchResultData>> call,
