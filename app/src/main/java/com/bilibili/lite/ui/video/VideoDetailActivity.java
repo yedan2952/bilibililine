@@ -29,6 +29,7 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -174,15 +175,11 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         ivCover.setVisibility(View.GONE);
 
-        // Build data source factory with Referer and User-Agent headers
-        DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
-                .setUserAgent(Constants.USER_AGENT)
-                .setAllowCrossProtocolRedirects(true)
-                .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
-                .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS);
+        // Build data source using shared OkHttpClient (cookies, DNS retry, interceptors)
+        OkHttpDataSource.Factory dataSourceFactory = new OkHttpDataSource.Factory(
+                com.bilibili.lite.data.remote.RetrofitClient.getInstance().getOkHttpClient());
         java.util.HashMap<String, String> defaultHeaders = new java.util.HashMap<>();
         defaultHeaders.put("Referer", "https://www.bilibili.com");
-        defaultHeaders.put("User-Agent", Constants.USER_AGENT);
         dataSourceFactory.setDefaultRequestProperties(defaultHeaders);
 
         // Create media source

@@ -78,4 +78,5 @@ dependencies {
     // Video Player: ExoPlayer (replaces MediaPlayer for better streaming support)
     implementation "com.google.android.exoplayer:exoplayer-core:2.19.1"
     implementation "com.google.android.exoplayer:exoplayer-ui:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-okhttp:2.19.1"
 }
