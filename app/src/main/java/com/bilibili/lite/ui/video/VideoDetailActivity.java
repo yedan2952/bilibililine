@@ -29,7 +29,6 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -175,9 +174,12 @@ public class VideoDetailActivity extends AppCompatActivity {
         showLoading(true);
         ivCover.setVisibility(View.GONE);
 
-        // Build data source using shared OkHttpClient (cookies, DNS retry, interceptors)
-        OkHttpDataSource.Factory dataSourceFactory = new OkHttpDataSource.Factory(
-                com.bilibili.lite.data.remote.RetrofitClient.getInstance().getOkHttpClient());
+        // Build data source factory with Referer header (required by Bilibili CDN)
+        DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                .setUserAgent(Constants.USER_AGENT)
+                .setAllowCrossProtocolRedirects(true)
+                .setConnectTimeoutMs(30000)
+                .setReadTimeoutMs(30000);
         java.util.HashMap<String, String> defaultHeaders = new java.util.HashMap<>();
         defaultHeaders.put("Referer", "https://www.bilibili.com");
         dataSourceFactory.setDefaultRequestProperties(defaultHeaders);
