@@ -33,24 +33,28 @@ public class RetrofitClient {
     private static RetrofitClient instance;
     private final ApiService apiService;
     private final OkHttpClient okHttpClient;
+    private static PersistentCookieJar persistentCookieJar;
+
+    private static Context appContext;
 
     /**
      * Initialize with application context (call from Application.onCreate)
      */
     public static void init(Context context) {
-        // Retain for future use
+        appContext = context.getApplicationContext();
     }
 
     private RetrofitClient() {
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        persistentCookieJar = new PersistentCookieJar();
 
         okHttpClient = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .dns(new RetryDns())
-                .cookieJar(new PersistentCookieJar())
+                .cookieJar(persistentCookieJar)
                 .addInterceptor(logging)
                 .addInterceptor(new UserAgentInterceptor())
                 .addInterceptor(new RetryInterceptor(MAX_RETRIES))
@@ -124,29 +128,80 @@ public class RetrofitClient {
 
     // ──────── Retry interceptor for transient failures ────────
 
-    // ──────── In-memory cookie jar for session persistence ────────
+    // ──────── Persistent cookie jar (in-memory + SharedPreferences) ────────
 
     private static class PersistentCookieJar implements CookieJar {
-        private final java.util.HashMap<String, java.util.List<Cookie>> cookieStore = new java.util.HashMap<>();
+        private final java.util.concurrent.ConcurrentHashMap<String, java.util.List<Cookie>> cookieStore
+                = new java.util.concurrent.ConcurrentHashMap<>();
+
+        PersistentCookieJar() {
+            // Restore cookies from disk on construction
+            if (appContext != null) {
+                String saved = appContext.getSharedPreferences("cookies", 0)
+                        .getString("cookies", "");
+                if (!saved.isEmpty()) {
+                    for (String entry : saved.split("\\|")) {
+                        String[] parts = entry.split("=", 2);
+                        if (parts.length == 2) {
+                            Cookie cookie = new Cookie.Builder()
+                                    .domain(parts[0].split("@")[0])
+                                    .name(parts[0].split("@")[1])
+                                    .value(parts[1])
+                                    .build();
+                            String host = "." + parts[0].split("@")[0];
+                            java.util.List<Cookie> list = cookieStore.get(host);
+                            if (list == null) {
+                                list = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+                                cookieStore.put(host, list);
+                            }
+                            list.add(cookie);
+                        }
+                    }
+                }
+            }
+        }
 
         @Override
         public void saveFromResponse(HttpUrl url, java.util.List<Cookie> cookies) {
             String host = url.host();
-            java.util.ArrayList<Cookie> existing = new java.util.ArrayList<>();
-            java.util.List<Cookie> saved = cookieStore.get(host);
-            if (saved != null) existing.addAll(saved);
-            // Replace old cookies with same name
+            java.util.List<Cookie> existing = cookieStore.get(host);
+            if (existing == null) {
+                existing = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+                cookieStore.put(host, existing);
+            }
             for (Cookie c : cookies) {
                 existing.removeIf(old -> old.name().equals(c.name()));
                 existing.add(c);
             }
-            cookieStore.put(host, existing);
+            persistToDisk();
         }
 
         @Override
         public java.util.List<Cookie> loadForRequest(HttpUrl url) {
             java.util.List<Cookie> cookies = cookieStore.get(url.host());
+            if (cookies == null) {
+                // Also check parent domains
+                String host = url.host();
+                while (host.contains(".")) {
+                    host = host.substring(host.indexOf('.') + 1);
+                    cookies = cookieStore.get("." + host);
+                    if (cookies != null) return cookies;
+                }
+            }
             return cookies != null ? cookies : new java.util.ArrayList<>();
+        }
+
+        private void persistToDisk() {
+            if (appContext == null) return;
+            StringBuilder sb = new StringBuilder();
+            for (java.util.Map.Entry<String, java.util.List<Cookie>> entry : cookieStore.entrySet()) {
+                for (Cookie c : entry.getValue()) {
+                    if (sb.length() > 0) sb.append("|");
+                    sb.append(entry.getKey()).append("@").append(c.name()).append("=").append(c.value);
+                }
+            }
+            appContext.getSharedPreferences("cookies", 0)
+                    .edit().putString("cookies", sb.toString()).apply();
         }
     }
 

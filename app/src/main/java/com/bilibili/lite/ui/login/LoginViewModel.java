@@ -5,6 +5,11 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import com.bilibili.lite.data.repository.UserRepository;
 
+/**
+ * Login via Bilibili QR code scanning.
+ * All LiveData updates use postValue() because OkHttp callbacks
+ * run on background threads.
+ */
 public class LoginViewModel extends ViewModel {
 
     private final UserRepository repo = UserRepository.getInstance();
@@ -24,14 +29,14 @@ public class LoginViewModel extends ViewModel {
         repo.generateQrCode(new UserRepository.QrCallback() {
             @Override
             public void onGenerated(String url, String key) {
-                qrUrl.setValue(url);
+                qrUrl.postValue(url); // Background thread → use postValue
                 qrcodeKey = key;
                 startPolling();
             }
 
             @Override
             public void onError(String err) {
-                error.setValue(err);
+                error.postValue(err);
             }
         });
     }
@@ -47,13 +52,13 @@ public class LoginViewModel extends ViewModel {
         repo.pollQrLogin(qrcodeKey, new UserRepository.QrPollCallback() {
             @Override
             public void onResult(int code) {
-                pollCode.setValue(code);
+                pollCode.postValue(code);
                 if (code == 0) {
                     polling = false;
-                    success.setValue(true);
+                    success.postValue(true);
                 } else if (code == 86038 || code == -1) {
                     polling = false;
-                    error.setValue("QR expired, regenerate");
+                    error.postValue("QR expired, regenerate");
                 } else {
                     new android.os.Handler().postDelayed(() -> pollOnce(), 1500);
                 }
@@ -61,7 +66,7 @@ public class LoginViewModel extends ViewModel {
 
             @Override
             public void onError(String err) {
-                error.setValue(err);
+                error.postValue(err);
                 polling = false;
             }
         });

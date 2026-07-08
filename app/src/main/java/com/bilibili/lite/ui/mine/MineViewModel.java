@@ -18,20 +18,20 @@ public class MineViewModel extends AndroidViewModel {
 
     public void loadUserInfo() {
         if (!NetworkUtil.isNetworkAvailable(getApplication())) {
-            loggedIn.setValue(false);
+            loggedIn.setValue(false); // Called from main thread
             return;
         }
         repo.getNavInfo(new UserRepository.CallbackImpl<UserInfo>() {
             @Override
             public void onSuccess(UserInfo result) {
-                userInfo.setValue(result);
-                loggedIn.setValue(true);
+                userInfo.postValue(result); // Callback may be on any thread
+                loggedIn.postValue(true);
             }
 
             @Override
             public void onError(String err) {
-                loggedIn.setValue(false);
-                error.setValue(NetworkUtil.getNetworkErrorMessage(
+                loggedIn.postValue(false);
+                error.postValue(NetworkUtil.getNetworkErrorMessage(
                         new Exception(err), getApplication()));
             }
         });

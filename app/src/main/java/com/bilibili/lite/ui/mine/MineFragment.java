@@ -9,6 +9,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -18,6 +20,7 @@ import com.bilibili.lite.R;
 import com.bilibili.lite.ui.debug.DebugActivity;
 import com.bilibili.lite.ui.login.LoginActivity;
 import com.bilibili.lite.util.DarkThemeHelper;
+import com.bilibili.lite.util.DebugLogger;
 import com.bilibili.lite.util.ImageLoader;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -30,6 +33,16 @@ public class MineFragment extends Fragment {
     private ImageView avatar;
     private TextView tvName, tvSign, tvLevel, tvHistoryCount, tvFavoriteCount;
     private View loginCard, userCard;
+
+    // Launcher to handle login result and refresh user info
+    private final ActivityResultLauncher<Intent> loginLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == LoginActivity.RESULT_OK) {
+                    DebugLogger.i("Mine", "Login success, refreshing user info");
+                    viewModel.loadUserInfo();
+                }
+            });
 
     @Nullable
     @Override
@@ -51,7 +64,7 @@ public class MineFragment extends Fragment {
         tvFavoriteCount = view.findViewById(R.id.tvFavoriteCount);
 
         loginCard.setOnClickListener(v ->
-                startActivity(new Intent(getActivity(), LoginActivity.class)));
+                loginLauncher.launch(new Intent(getActivity(), LoginActivity.class)));
 
         view.findViewById(R.id.menuHistory).setOnClickListener(v -> {
             SharedPreferences prefs = getActivity().getSharedPreferences("bili", 0);
