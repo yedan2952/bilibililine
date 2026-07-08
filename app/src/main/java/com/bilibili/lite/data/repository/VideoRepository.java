@@ -66,8 +66,9 @@ public class VideoRepository {
         params.put("fnver", "0");
         params.put("fourk", "1");
         params.put("otype", "json");
-        params.put("platform", "web");
+        params.put("platform", "android");
         params.put("high_quality", "1");
+        params.put("voice_balance", "1");
         api.getPlayUrl(WbiSigner.sign(params)).enqueue(new Callback<ApiService.BiliResponse<ApiService.PlayUrlData>>() {
             @Override public void onResponse(Call<ApiService.BiliResponse<ApiService.PlayUrlData>> call,
                                              Response<ApiService.BiliResponse<ApiService.PlayUrlData>> response) {

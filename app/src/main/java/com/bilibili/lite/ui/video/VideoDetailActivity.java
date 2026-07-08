@@ -29,9 +29,7 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.ui.PlayerView;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DataSpec;
-import com.google.android.exoplayer2.upstream.TransferListener;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -177,12 +175,19 @@ public class VideoDetailActivity extends AppCompatActivity {
         ivCover.setVisibility(View.GONE);
 
         // Use shared OkHttpClient for video requests (cookies, DNS, interceptors)
-        okhttp3.OkHttpClient okHttpClient = com.bilibili.lite.data.remote.RetrofitClient
-                .getInstance().getOkHttpClient();
+        // Use ExoPlayer's DefaultHttpDataSource with proper Bilibili headers
+        String refererUrl = "https://www.bilibili.com/video/" + (bvid != null ? bvid : "");
+        DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory();
+        dataSourceFactory.setUserAgent(Constants.USER_AGENT);
+        dataSourceFactory.setAllowCrossProtocolRedirects(true);
+        dataSourceFactory.setConnectTimeoutMs(30000);
+        dataSourceFactory.setReadTimeoutMs(30000);
+        java.util.HashMap<String, String> headers = new java.util.HashMap<>();
+        headers.put("Referer", refererUrl);
+        headers.put("Origin", "https://www.bilibili.com");
+        dataSourceFactory.setDefaultRequestProperties(headers);
 
-        // Create media source using our OkHttp-based DataSource factory
-        MediaSource mediaSource = new ProgressiveMediaSource.Factory(
-                new OkHttpDataSourceFactory(okHttpClient, url))
+        MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(MediaItem.fromUri(Uri.parse(url)));
 
         // Build ExoPlayer
@@ -416,89 +421,4 @@ public class VideoDetailActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    /**
-     * ExoPlayer DataSource.Factory that creates OkHttpDataSourceWrapper instances.
-     */
-    private static class OkHttpDataSourceFactory implements DataSource.Factory {
-        private final okhttp3.OkHttpClient client;
-        private final String url;
-
-        OkHttpDataSourceFactory(okhttp3.OkHttpClient client, String url) {
-            this.client = client;
-            this.url = url;
-        }
-
-        @Override
-        public DataSource createDataSource() {
-            return new OkHttpDataSourceWrapper(client, url);
-        }
-
-        @Override
-        public void addTransferListener(TransferListener transferListener) {
-            // No-op: we don't track transfer events
-        }
-    }
-
-    /**
-     * ExoPlayer DataSource that delegates to our shared OkHttpClient,
-     * ensuring all video requests use the same cookies, DNS retry,
-     * and interceptors as the rest of the app.
-     */
-    private static class OkHttpDataSourceWrapper implements DataSource {
-
-        private final okhttp3.OkHttpClient client;
-        private final String url;
-        private okhttp3.Response response;
-        private java.io.InputStream inputStream;
-        private Uri actualUri;
-
-        OkHttpDataSourceWrapper(okhttp3.OkHttpClient client, String url) {
-            this.client = client;
-            this.url = url;
-        }
-
-        @Override
-        public void addTransferListener(TransferListener transferListener) {
-            // No-op: we don't track transfer events
-        }
-
-        @Override
-        public long open(DataSpec dataSpec) throws java.io.IOException {
-            okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
-                    .url(url)
-                    .header("Referer", "https://www.bilibili.com")
-                    .header("Origin", "https://www.bilibili.com")
-                    .header("User-Agent", Constants.USER_AGENT);
-            // Support range requests for seeking
-            if (dataSpec.position != 0) {
-                builder.header("Range", "bytes=" + dataSpec.position + "-");
-            }
-            okhttp3.Response resp = client.newCall(builder.build()).execute();
-            this.response = resp;
-            this.inputStream = resp.body() != null ? resp.body().byteStream() : null;
-            this.actualUri = Uri.parse(url);
-            if (!resp.isSuccessful() && dataSpec.position == 0) {
-                // Throw detailed error for non-2xx responses
-                throw new java.io.IOException("HTTP " + resp.code() + " for " + url);
-            }
-            long length = resp.body() != null ? resp.body().contentLength() : -1;
-            return length >= 0 ? length : dataSpec.length;
-        }
-
-        @Override
-        public int read(byte[] buffer, int offset, int length) throws java.io.IOException {
-            if (inputStream == null) return -1;
-            return inputStream.read(buffer, offset, length);
-        }
-
-        @Override
-        public Uri getUri() {
-            return actualUri;
-        }
-
-        @Override
-        public void close() throws java.io.IOException {
-            if (response != null) response.close();
-        }
-    }
 }
