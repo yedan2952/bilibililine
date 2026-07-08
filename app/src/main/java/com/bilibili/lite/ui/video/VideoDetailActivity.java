@@ -180,8 +180,10 @@ public class VideoDetailActivity extends AppCompatActivity {
                 .setAllowCrossProtocolRedirects(true)
                 .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
                 .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS);
-        dataSourceFactory.getDefaultRequestProperties().set("Referer", "https://www.bilibili.com");
-        dataSourceFactory.getDefaultRequestProperties().set("User-Agent", Constants.USER_AGENT);
+        java.util.HashMap<String, String> defaultHeaders = new java.util.HashMap<>();
+        defaultHeaders.put("Referer", "https://www.bilibili.com");
+        defaultHeaders.put("User-Agent", Constants.USER_AGENT);
+        dataSourceFactory.setDefaultRequestProperties(defaultHeaders);
 
         // Create media source
         MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
@@ -207,7 +209,7 @@ public class VideoDetailActivity extends AppCompatActivity {
                 showLoading(false);
                 DebugLogger.e("VideoDetail", "ExoPlayer error urlIndex=" + currentUrlIndex
                         + " error=" + error.getLocalizedMessage()
-                        + " code=" + error.errorCodeName);
+                        + " code=" + error.getErrorCodeName());
                 tryFallback();
             }
         });
