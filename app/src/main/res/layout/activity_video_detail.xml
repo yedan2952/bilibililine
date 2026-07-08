@@ -13,10 +13,11 @@
         android:minHeight="180dp"
         android:background="@color/black">
 
-        <SurfaceView
-            android:id="@+id/surfaceView"
+        <com.google.android.exoplayer2.ui.PlayerView
+            android:id="@+id/playerView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:visibility="visible" />
 
         <ImageView
             android:id="@+id/ivCover"
@@ -25,11 +26,12 @@
             android:scaleType="centerCrop"
             android:visibility="visible" />
 
-        <!-- Click overlay for toggling controls -->
+        <!-- Click overlay for toggling custom controls (ExoPlayer has its own) -->
         <View
             android:id="@+id/playerClickOverlay"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/loadingIndicator"

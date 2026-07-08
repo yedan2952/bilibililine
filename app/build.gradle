@@ -71,6 +71,7 @@ dependencies {
     // JSON
     implementation "com.google.code.gson:gson:2.8.9"
 
-    // Video Player (using Android built-in MediaPlayer, API 1+)
-    // ijkplayer can replace MediaPlayer when a working Maven repo is available
+    // Video Player: ExoPlayer (replaces MediaPlayer for better streaming support)
+    implementation "com.google.android.exoplayer:exoplayer-core:2.19.1"
+    implementation "com.google.android.exoplayer:exoplayer-ui:2.19.1"
 }

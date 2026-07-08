@@ -3,24 +3,15 @@ package com.bilibili.lite.ui.video;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
-import android.media.MediaPlayer;
-import android.media.PlaybackParams;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import com.bilibili.lite.R;
@@ -31,12 +22,19 @@ import com.bilibili.lite.util.Constants;
 import com.bilibili.lite.util.DarkThemeHelper;
 import com.bilibili.lite.util.DebugLogger;
 import com.bilibili.lite.util.ImageLoader;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -46,24 +44,18 @@ public class VideoDetailActivity extends AppCompatActivity {
     private VideoDetailViewModel viewModel;
     private final VideoRepository repo = VideoRepository.getInstance();
 
-    private TextView tvTitle, tvAuthor, tvStats, tvCurrentTime, tvTotalTime, tvPubdate, tvDescription;
-    private ImageView ivCover, btnPlayPause, btnFullscreen, btnSpeed, btnQuality;
+    private TextView tvTitle, tvAuthor, tvStats, tvPubdate, tvDescription;
+    private ImageView ivCover, btnFullscreen;
     private TextView btnFavorite, btnSubtitle;
-    private SurfaceView surfaceView;
-    private View playerControls, loadingIndicator;
-    private ProgressBar loadingSpinner;
-    private SeekBar seekBar;
+    private PlayerView playerView;
+    private View loadingIndicator;
     private LinearLayout relatedContainer, commentsContainer;
 
-    private MediaPlayer mediaPlayer;
-    private Handler handler = new Handler();
-    private boolean isPlaying, isFullscreen, controlsVisible;
+    private ExoPlayer exoPlayer;
+    private boolean isFullscreen;
     private String bvid;
     private long aid;
     private int currentQn = 32;
-    private float currentSpeed = 1.0f;
-    private int[] acceptQuality;
-    private String[] acceptDesc;
     private String[] backupUrls;
     private int currentUrlIndex = 0;
     private int originalOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
@@ -91,20 +83,12 @@ public class VideoDetailActivity extends AppCompatActivity {
         tvStats = findViewById(R.id.tvStats);
         tvPubdate = findViewById(R.id.tvPubdate);
         tvDescription = findViewById(R.id.tvDescription);
-        tvCurrentTime = findViewById(R.id.tvCurrentTime);
-        tvTotalTime = findViewById(R.id.tvTotalTime);
         ivCover = findViewById(R.id.ivCover);
-        surfaceView = findViewById(R.id.surfaceView);
-        playerControls = findViewById(R.id.playerControls);
-        btnPlayPause = findViewById(R.id.btnPlayPause);
+        playerView = findViewById(R.id.playerView);
         btnFullscreen = findViewById(R.id.btnFullscreen);
-        btnSpeed = findViewById(R.id.btnSpeed);
-        btnQuality = findViewById(R.id.btnQuality);
         btnFavorite = findViewById(R.id.btnFavorite);
         btnSubtitle = findViewById(R.id.btnSubtitle);
-        seekBar = findViewById(R.id.seekBar);
         loadingIndicator = findViewById(R.id.loadingIndicator);
-        loadingSpinner = findViewById(R.id.loadingSpinner);
         relatedContainer = findViewById(R.id.relatedContainer);
         commentsContainer = findViewById(R.id.commentsContainer);
         btnLoadMoreComments = findViewById(R.id.btnLoadMoreComments);
@@ -116,30 +100,12 @@ public class VideoDetailActivity extends AppCompatActivity {
 
         updateFavoriteButton();
 
-        btnPlayPause.setOnClickListener(v -> togglePlayPause());
         btnFullscreen.setOnClickListener(v -> toggleFullscreen());
-        btnSpeed.setOnClickListener(v -> showSpeedDialog());
-        btnQuality.setOnClickListener(v -> showQualityDialog());
         btnFavorite.setOnClickListener(v -> toggleFavorite());
         btnSubtitle.setOnClickListener(v -> Toast.makeText(this, "\u5b57\u5e55 - \u5373\u5c06\u6765\u4e34", Toast.LENGTH_SHORT).show());
-        findViewById(R.id.playerClickOverlay).setOnClickListener(v -> toggleControls());
         btnLoadMoreComments.setOnClickListener(v -> loadMoreComments());
 
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar sb, int p, boolean u) {}
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {
-                if (mediaPlayer != null) mediaPlayer.seekTo(sb.getProgress());
-            }
-        });
-
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override public void surfaceCreated(SurfaceHolder holder) {
-                if (mediaPlayer != null) mediaPlayer.setDisplay(holder);
-            }
-            @Override public void surfaceChanged(SurfaceHolder holder, int f, int w, int h) {}
-            @Override public void surfaceDestroyed(SurfaceHolder holder) {}
-        });
+        // ExoPlayer's PlayerView handles play/pause, seek, and time display automatically
 
         viewModel = new ViewModelProvider(this).get(VideoDetailViewModel.class);
         viewModel.getVideo().observe(this, video -> {
@@ -186,11 +152,9 @@ public class VideoDetailActivity extends AppCompatActivity {
         repo.getPlayUrl(bvid, cid, qn, new VideoRepository.CallbackImpl<VideoRepository.PlayUrlResult>() {
             @Override public void onSuccess(VideoRepository.PlayUrlResult r) {
                 DebugLogger.i("VideoDetail", "Got play URL, qn=" + qn + " url=" + (r.url != null ? r.url.substring(0, Math.min(80, r.url.length())) : "null"));
-                acceptQuality = r.acceptQuality;
-                acceptDesc = r.acceptDesc;
                 backupUrls = r.backupUrls;
                 currentUrlIndex = 0;
-                initPlayer(r.url);
+                initExoPlayer(r.url);
             }
             @Override public void onError(String e) {
                 showLoading(false);
@@ -206,101 +170,80 @@ public class VideoDetailActivity extends AppCompatActivity {
         });
     }
 
-    private void initPlayer(String url) {
+    private void initExoPlayer(String url) {
         releasePlayer();
-        mediaPlayer = new MediaPlayer();
-        try {
-            // Bilibili CDN requires Referer and User-Agent headers
-            HashMap<String, String> headers = new HashMap<>();
-            headers.put("Referer", "https://www.bilibili.com");
-            headers.put("User-Agent", Constants.USER_AGENT);
-            mediaPlayer.setDataSource(this, Uri.parse(url), headers);
-            mediaPlayer.setDisplay(surfaceView.getHolder());
-            mediaPlayer.setOnPreparedListener(mp -> {
-                showLoading(false);
-                ivCover.setVisibility(View.GONE);
-                seekBar.setMax(mp.getDuration());
-                tvTotalTime.setText(formatTime(mp.getDuration()));
-                applySpeed();
-                mp.start();
-                isPlaying = true;
-                btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
-                showControls();
-                handler.post(updateProgress);
-            });
-            mediaPlayer.setOnErrorListener((mp, w, e) -> {
-                showLoading(false);
-                DebugLogger.e("VideoDetail", "MediaPlayer error what=" + w + " extra=" + e + " urlIndex=" + currentUrlIndex);
-                // Try backup URLs if available
-                if (currentUrlIndex < (backupUrls != null ? backupUrls.length : 0) - 1) {
-                    currentUrlIndex++;
-                    String fallbackUrl = backupUrls[currentUrlIndex];
-                    DebugLogger.i("VideoDetail", "Trying backup URL #" + currentUrlIndex + ": " + fallbackUrl.substring(0, Math.min(80, fallbackUrl.length())));
-                    Toast.makeText(VideoDetailActivity.this, "正在切换到备用线路...", Toast.LENGTH_SHORT).show();
-                    showLoading(true);
-                    initPlayer(fallbackUrl);
-                } else {
-                    String errorMsg;
-                    if (w == MediaPlayer.MEDIA_ERROR_IO) {
-                        errorMsg = "视频流加载失败，请尝试切换画质或稍后重试";
-                    } else if (w == MediaPlayer.MEDIA_ERROR_TIMED_OUT) {
-                        errorMsg = "视频播放超时，请检查网络后重试";
-                    } else {
-                        errorMsg = "视频播放出错 (" + w + ")，请稍后重试";
-                    }
-                    Toast.makeText(VideoDetailActivity.this, errorMsg, Toast.LENGTH_LONG).show();
+        showLoading(true);
+        ivCover.setVisibility(View.GONE);
+
+        // Build data source factory with Referer and User-Agent headers
+        DefaultHttpDataSourceFactory dataSourceFactory = new DefaultHttpDataSourceFactory(
+                Constants.USER_AGENT,
+                DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS,
+                DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS,
+                true // allow cross-protocol redirects
+        );
+        dataSourceFactory.getDefaultRequestProperties().set("Referer", "https://www.bilibili.com");
+        dataSourceFactory.getDefaultRequestProperties().set("User-Agent", Constants.USER_AGENT);
+
+        // Create media source
+        MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(MediaItem.fromUri(Uri.parse(url)));
+
+        // Build ExoPlayer
+        exoPlayer = new ExoPlayer.Builder(this)
+                .build();
+        exoPlayer.setMediaSource(mediaSource);
+        exoPlayer.addListener(new Player.Listener() {
+            @Override
+            public void onPlaybackStateChanged(int playbackState) {
+                if (playbackState == Player.STATE_READY) {
+                    showLoading(false);
+                    playerView.setVisibility(View.VISIBLE);
+                } else if (playbackState == Player.STATE_ENDED) {
+                    // Video finished
                 }
-                return true;
-            });
-            mediaPlayer.setOnCompletionListener(mp -> {
-                isPlaying = false;
-                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
-            });
-            mediaPlayer.setScreenOnWhilePlaying(true);
-            mediaPlayer.prepareAsync();
-        } catch (IOException e) {
-            showLoading(false);
-            // Try fallback if the primary URL is invalid
-            if (backupUrls != null && backupUrls.length > 0 && currentUrlIndex < backupUrls.length - 1) {
-                currentUrlIndex++;
-                DebugLogger.i("VideoDetail", "Primary URL failed, trying backup #" + currentUrlIndex);
-                initPlayer(backupUrls[currentUrlIndex]);
-            } else {
-                Toast.makeText(this, "无法播放视频: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
+
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                showLoading(false);
+                DebugLogger.e("VideoDetail", "ExoPlayer error urlIndex=" + currentUrlIndex
+                        + " error=" + error.getLocalizedMessage()
+                        + " code=" + error.errorCodeName);
+                tryFallback();
+            }
+        });
+
+        playerView.setPlayer(exoPlayer);
+        exoPlayer.setPlayWhenReady(true);
+        exoPlayer.prepare();
+    }
+
+    private void tryFallback() {
+        if (currentUrlIndex < (backupUrls != null ? backupUrls.length : 0) - 1) {
+            currentUrlIndex++;
+            String fallbackUrl = backupUrls[currentUrlIndex];
+            DebugLogger.i("VideoDetail", "Trying backup URL #" + currentUrlIndex);
+            Toast.makeText(VideoDetailActivity.this, "正在切换到备用线路...", Toast.LENGTH_SHORT).show();
+            showLoading(true);
+            initExoPlayer(fallbackUrl);
+        } else {
+            String errorMsg = "视频加载失败，请尝试切换画质或稍后重试";
+            Toast.makeText(VideoDetailActivity.this, errorMsg, Toast.LENGTH_LONG).show();
         }
     }
 
-    private void applySpeed() {
-        if (mediaPlayer == null) return;
-        if (Build.VERSION.SDK_INT >= 23) {
-            PlaybackParams pp = new PlaybackParams();
-            pp.setSpeed(currentSpeed);
-            mediaPlayer.setPlaybackParams(pp);
+    private void showLoading(boolean show) {
+        loadingIndicator.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void releasePlayer() {
+        if (exoPlayer != null) {
+            exoPlayer.stop();
+            exoPlayer.release();
+            exoPlayer = null;
         }
-    }
-
-    private void showSpeedDialog() {
-        String[] speeds = {"0.5x", "1.0x", "1.5x", "2.0x"};
-        float[] vals = {0.5f, 1.0f, 1.5f, 2.0f};
-        new AlertDialog.Builder(this)
-                .setTitle("Playback Speed")
-                .setItems(speeds, (d, i) -> {
-                    currentSpeed = vals[i];
-                    applySpeed();
-                    Toast.makeText(this, speeds[i], Toast.LENGTH_SHORT).show();
-                }).show();
-    }
-
-    private void showQualityDialog() {
-        if (acceptDesc == null) return;
-        new AlertDialog.Builder(this)
-                .setTitle("Quality")
-                .setItems(acceptDesc, (d, i) -> {
-                    currentQn = acceptQuality[i];
-                    loadUrl(bvid, viewModel.getVideo().getValue() != null
-                            ? viewModel.getVideo().getValue().getCid() : 0, currentQn);
-                }).show();
+        playerView.setPlayer(null);
     }
 
     private void toggleFavorite() {
@@ -406,28 +349,6 @@ public class VideoDetailActivity extends AppCompatActivity {
                 .putExtra("author", v.getOwnerName()));
     }
 
-    private final Runnable updateProgress = () -> {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            seekBar.setProgress(mediaPlayer.getCurrentPosition());
-            tvCurrentTime.setText(formatTime(mediaPlayer.getCurrentPosition()));
-            handler.postDelayed(this.updateProgress, 250);
-        }
-    };
-
-    private void togglePlayPause() {
-        if (mediaPlayer == null) return;
-        if (mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            isPlaying = false;
-            btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
-        } else {
-            mediaPlayer.start();
-            isPlaying = true;
-            btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
-            handler.post(updateProgress);
-        }
-    }
-
     private void toggleFullscreen() {
         isFullscreen = !isFullscreen;
         if (isFullscreen) {
@@ -470,43 +391,6 @@ public class VideoDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void toggleControls() {
-        if (controlsVisible) hideControls();
-        else showControls();
-    }
-
-    private void showControls() {
-        controlsVisible = true;
-        playerControls.setVisibility(View.VISIBLE);
-        handler.removeCallbacks(hideControlsTask);
-        handler.postDelayed(hideControlsTask, 3000);
-    }
-
-    private void hideControls() {
-        controlsVisible = false;
-        playerControls.setVisibility(View.GONE);
-    }
-
-    private final Runnable hideControlsTask = this::hideControls;
-
-    private void showLoading(boolean show) {
-        loadingIndicator.setVisibility(show ? View.VISIBLE : View.GONE);
-        if (show) loadingSpinner.setVisibility(View.VISIBLE);
-    }
-
-    private void releasePlayer() {
-        handler.removeCallbacks(updateProgress);
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-    }
-
-    private String formatTime(int ms) {
-        int s = ms / 1000;
-        return String.format("%02d:%02d", s / 60, s % 60);
-    }
-
     private String formatDate(long timestamp) {
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
         return sdf.format(new java.util.Date(timestamp * 1000));
@@ -523,12 +407,16 @@ public class VideoDetailActivity extends AppCompatActivity {
 
     @Override protected void onPause() {
         super.onPause();
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
+        if (exoPlayer != null && exoPlayer.isPlaying()) exoPlayer.pause();
+    }
+
+    @Override protected void onStop() {
+        super.onStop();
+        if (exoPlayer != null) exoPlayer.pause();
     }
 
     @Override protected void onDestroy() {
         releasePlayer();
-        handler.removeCallbacks(hideControlsTask);
         super.onDestroy();
     }
 }
