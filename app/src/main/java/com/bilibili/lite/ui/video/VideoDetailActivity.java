@@ -182,7 +182,7 @@ public class VideoDetailActivity extends AppCompatActivity {
 
         // Create media source using our OkHttp-based DataSource factory
         MediaSource mediaSource = new ProgressiveMediaSource.Factory(
-                () -> new OkHttpDataSourceWrapper(okHttpClient, url))
+                new OkHttpDataSourceFactory(okHttpClient, url))
                 .createMediaSource(MediaItem.fromUri(Uri.parse(url)));
 
         // Build ExoPlayer
@@ -414,6 +414,29 @@ public class VideoDetailActivity extends AppCompatActivity {
     @Override protected void onDestroy() {
         releasePlayer();
         super.onDestroy();
+    }
+
+    /**
+     * ExoPlayer DataSource.Factory that creates OkHttpDataSourceWrapper instances.
+     */
+    private static class OkHttpDataSourceFactory implements DataSource.Factory {
+        private final okhttp3.OkHttpClient client;
+        private final String url;
+
+        OkHttpDataSourceFactory(okhttp3.OkHttpClient client, String url) {
+            this.client = client;
+            this.url = url;
+        }
+
+        @Override
+        public DataSource createDataSource() {
+            return new OkHttpDataSourceWrapper(client, url);
+        }
+
+        @Override
+        public void addTransferListener(TransferListener transferListener) {
+            // No-op: we don't track transfer events
+        }
     }
 
     /**
